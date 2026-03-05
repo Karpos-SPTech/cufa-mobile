@@ -1,21 +1,29 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 
 interface Props {
   title: string;
   company: string;
   city: string;
+  onEdit?: () => void;
 }
 
-export default function ExperienceCard({ title, company, city }: Props) {
+export default function ExperienceCard({ title, company, city, onEdit }: Props) {
   return (
     <View style={styles.card}>
-      <View style={styles.circle} />
+      <View style={styles.left}>
+        <View style={styles.circle} />
 
-      <View>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.subtitle}>{company}</Text>
-        <Text style={styles.city}>{city}</Text>
+        <View>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.subtitle}>{company}</Text>
+          <Text style={styles.city}>{city}</Text>
+        </View>
       </View>
+
+      <TouchableOpacity style={styles.editButton} onPress={onEdit} disabled={!onEdit}>
+        <Feather name="edit-2" size={16} color="#0B6B2F" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -23,16 +31,25 @@ export default function ExperienceCard({ title, company, city }: Props) {
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
-    gap: 15,
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 15,
     borderBottomWidth: 1,
     borderColor: '#ccc',
+  },
+  left: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
   },
   circle: {
     width: 50,
     height: 50,
     borderRadius: 25,
     backgroundColor: '#E6E6E6',
+  },
+  editButton: {
+    padding: 6,
   },
   title: {
     fontWeight: 'bold',
