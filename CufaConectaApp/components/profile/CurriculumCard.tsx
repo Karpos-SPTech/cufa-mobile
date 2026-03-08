@@ -23,7 +23,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   file: {
-    backgroundColor: '#E6E6E6',
+    backgroundColor: '#E5EEE3',
     padding: 12,
     borderRadius: 20,
   },

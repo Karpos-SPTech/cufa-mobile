@@ -10,9 +10,9 @@ import {
 } from 'react-native';
 import { useEffect, useState } from 'react';
 
-import Header from '../../components/profile/Header';
+import Header from '../../components/Base/Header';
+import SectionTitle from '../../components/Base/SectionTitle';
 import ProfileHeader from '../../components/profile/ProfileHeader';
-import SectionTitle from '../../components/profile/SectionTitle';
 import ExperienceCard from '../../components/profile/ExperienceCard';
 import CurriculumCard from '../../components/profile/CurriculumCard';
 
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#E5EEE3',
     borderRadius: 16,
     padding: 20,
   },
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#DDD',
+    borderColor: '#E5EEE3',
     borderRadius: 10,
     padding: 12,
     marginBottom: 10,
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   modalCancel: {
-    backgroundColor: '#E8ECE9',
+    backgroundColor: '#E5EEE3',
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 10,
