@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView } from "react-native";
 import React from "react";
-import Header from '../../Base/Header';
+import Header from "../Base/Header";
 
 export default function Home() {
   const Home = [

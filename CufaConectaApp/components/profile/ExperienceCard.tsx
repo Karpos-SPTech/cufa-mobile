@@ -6,9 +6,10 @@ interface Props {
   company: string;
   city: string;
   onEdit?: () => void;
+  onDelete?: () => void;
 }
 
-export default function ExperienceCard({ title, company, city, onEdit }: Props) {
+export default function ExperienceCard({ title, company, city, onEdit, onDelete }: Props) {
   return (
     <View style={styles.card}>
       <View style={styles.left}>
@@ -21,9 +22,16 @@ export default function ExperienceCard({ title, company, city, onEdit }: Props) 
         </View>
       </View>
 
-      <TouchableOpacity style={styles.editButton} onPress={onEdit} disabled={!onEdit}>
-        <Feather name="edit-2" size={16} color="#0B6B2F" />
-      </TouchableOpacity>
+      <View style={styles.actions}>
+        {onDelete ? (
+          <TouchableOpacity style={styles.editButton} onPress={onDelete} hitSlop={8}>
+            <Feather name="trash-2" size={16} color="#a00" />
+          </TouchableOpacity>
+        ) : null}
+        <TouchableOpacity style={styles.editButton} onPress={onEdit} disabled={!onEdit}>
+          <Feather name="edit-2" size={16} color="#0B6B2F" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -47,6 +55,11 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 25,
     backgroundColor: '#E6E6E6',
+  },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
   editButton: {
     padding: 6,

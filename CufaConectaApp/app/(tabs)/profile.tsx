@@ -7,71 +7,134 @@ import {
   Pressable,
   TextInput,
   TouchableOpacity,
-} from 'react-native';
-import { useEffect, useState } from 'react';
+  ActivityIndicator,
+  Alert,
+} from "react-native";
+import { useCallback, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import { useRouter, type Href } from "expo-router";
 
-import Header from '../../components/Base/Header';
-import SectionTitle from '../../components/Base/SectionTitle';
-import ProfileHeader from '../../components/profile/ProfileHeader';
-import ExperienceCard from '../../components/profile/ExperienceCard';
-import CurriculumCard from '../../components/profile/CurriculumCard';
-
-type ExperienceItem = { id: string; title: string; company: string; city: string };
-
-// Session storage em memória (temporário, perde ao fechar o app)
-let experienceSession: ExperienceItem[] = [];
+import Header from "../../components/Base/Header";
+import { useAuth } from "../../constants/AuthContext";
+import SectionTitle from "../../components/Base/SectionTitle";
+import ProfileHeader from "../../components/profile/ProfileHeader";
+import ExperienceCard from "../../components/profile/ExperienceCard";
+import CurriculumCard from "../../components/profile/CurriculumCard";
+import * as experienciasApi from "../../services/experienciasService";
+import * as curriculosApi from "../../services/curriculosService";
+import { getUsuarioAtual } from "../../services/usuariosService";
+import { defaultExperienciaRange, formatExperienciaPeriod } from "../../lib/date";
+import type { ExperienciaApi } from "../../types/api";
 
 export default function Profile() {
-  const [experiences, setExperiences] = useState<ExperienceItem[]>([]);
-  const [experienceModalOpen, setExperienceModalOpen] = useState(false);
-  const [expTitle, setExpTitle] = useState('');
-  const [expCompany, setExpCompany] = useState('');
-  const [expCity, setExpCity] = useState('');
-  const [editingExperienceId, setEditingExperienceId] = useState<string | null>(null);
+  const router = useRouter();
+  const { logout, refreshPerfil } = useAuth();
 
-  useEffect(() => {
-    setExperiences(experienceSession);
+  const [nome, setNome] = useState("");
+  const [biografia, setBiografia] = useState("");
+  const [cidade, setCidade] = useState("");
+  const [estado, setEstado] = useState<string | null>(null);
+  const [fotoUrl, setFotoUrl] = useState<string | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  const [experiences, setExperiences] = useState<ExperienciaApi[]>([]);
+  const [expLoading, setExpLoading] = useState(true);
+
+  const [curriculoNome, setCurriculoNome] = useState<string | null>(null);
+  const [cvLoading, setCvLoading] = useState(true);
+
+  const [experienceModalOpen, setExperienceModalOpen] = useState(false);
+  const [expTitle, setExpTitle] = useState("");
+  const [expCompany, setExpCompany] = useState("");
+  const [expCity, setExpCity] = useState("");
+  const [editingExperienceId, setEditingExperienceId] = useState<number | null>(null);
+
+  const loadProfile = useCallback(async () => {
+    setProfileLoading(true);
+    try {
+      const u = await getUsuarioAtual();
+      setNome(u.nome ?? "");
+      setBiografia(u.biografia ?? "");
+      setCidade(u.cidade ?? "");
+      setEstado(u.estado ?? null);
+      setFotoUrl(u.fotoUrl ?? null);
+    } catch {
+      setNome("");
+      setBiografia("");
+      setCidade("");
+      setEstado(null);
+      setFotoUrl(null);
+    } finally {
+      setProfileLoading(false);
+    }
   }, []);
 
-  const saveExperiences = (
-    items: { id: string; title: string; company: string; city: string }[]
-  ) => {
-    setExperiences(items);
-    experienceSession = items;
-  };
+  const loadExperiencias = useCallback(async () => {
+    setExpLoading(true);
+    try {
+      const list = await experienciasApi.listarExperiencias();
+      setExperiences(list);
+    } catch {
+      setExperiences([]);
+    } finally {
+      setExpLoading(false);
+    }
+  }, []);
+
+  const loadCurriculo = useCallback(async () => {
+    setCvLoading(true);
+    try {
+      const c = await curriculosApi.getCurriculoArquivo();
+      setCurriculoNome(c.filename || null);
+    } catch {
+      setCurriculoNome(null);
+    } finally {
+      setCvLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+      loadExperiencias();
+      loadCurriculo();
+    }, [loadProfile, loadExperiencias, loadCurriculo])
+  );
 
   const handleAddExperience = async () => {
     if (!expTitle.trim() || !expCompany.trim()) {
       return;
     }
 
-    if (editingExperienceId) {
-      const updated = experiences.map((item) =>
-        item.id === editingExperienceId
-          ? {
-              ...item,
-              title: expTitle.trim(),
-              company: expCompany.trim(),
-              city: expCity.trim(),
-            }
-          : item
-      );
+    const empresaLabel = expCity.trim()
+      ? `${expCompany.trim()} (${expCity.trim()})`
+      : expCompany.trim();
+    const { dtInicio, dtFim } = defaultExperienciaRange();
 
-      saveExperiences(updated);
-    } else {
-      const newItem = {
-        id: Date.now().toString(),
-        title: expTitle.trim(),
-        company: expCompany.trim(),
-        city: expCity.trim(),
-      };
-
-      saveExperiences([newItem, ...experiences]);
+    try {
+      if (editingExperienceId != null) {
+        await experienciasApi.atualizarExperiencia(editingExperienceId, {
+          cargo: expTitle.trim(),
+          empresa: empresaLabel,
+          dtInicio,
+          dtFim,
+        });
+      } else {
+        await experienciasApi.criarExperiencia({
+          cargo: expTitle.trim(),
+          empresa: empresaLabel,
+          dtInicio,
+          dtFim,
+        });
+      }
+      await loadExperiencias();
+    } catch {
+      Alert.alert("Erro", "Não foi possível salvar a experiência.");
     }
 
-    setExpTitle('');
-    setExpCompany('');
-    setExpCity('');
+    setExpTitle("");
+    setExpCompany("");
+    setExpCity("");
     setEditingExperienceId(null);
     setExperienceModalOpen(false);
   };
@@ -79,17 +142,43 @@ export default function Profile() {
   const handleCloseExperienceModal = () => {
     setExperienceModalOpen(false);
     setEditingExperienceId(null);
-    setExpTitle('');
-    setExpCompany('');
-    setExpCity('');
+    setExpTitle("");
+    setExpCompany("");
+    setExpCity("");
   };
 
-  const handleEditExperience = (item: ExperienceItem) => {
+  const handleEditExperience = (item: ExperienciaApi) => {
     setEditingExperienceId(item.id);
-    setExpTitle(item.title);
-    setExpCompany(item.company);
-    setExpCity(item.city);
+    setExpTitle(item.cargo);
+    const raw = item.empresa;
+    const match = raw.match(/^(.*) \((.*)\)$/);
+    if (match) {
+      setExpCompany(match[1].trim());
+      setExpCity(match[2].trim());
+    } else {
+      setExpCompany(raw);
+      setExpCity("");
+    }
     setExperienceModalOpen(true);
+  };
+
+  const handleDeleteExperience = (item: ExperienciaApi) => {
+    Alert.alert("Excluir experiência", "Remover este registro?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Excluir",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await experienciasApi.removerExperiencia(item.id);
+            await loadExperiencias();
+            handleCloseExperienceModal();
+          } catch {
+            Alert.alert("Erro", "Não foi possível excluir.");
+          }
+        },
+      },
+    ]);
   };
 
   return (
@@ -97,7 +186,21 @@ export default function Profile() {
       <Header />
 
       <ScrollView style={styles.content}>
-        <ProfileHeader />
+        {profileLoading ? (
+          <ActivityIndicator color="#0B6B2F" style={{ marginTop: 16 }} />
+        ) : (
+          <ProfileHeader
+            nome={nome}
+            biografia={biografia}
+            cidade={cidade}
+            estado={estado}
+            fotoUrl={fotoUrl}
+            onPerfilChanged={async () => {
+              await loadProfile();
+              await refreshPerfil();
+            }}
+          />
+        )}
 
         <View style={styles.inner}>
           <SectionTitle title="Sobre" />
@@ -107,31 +210,46 @@ export default function Profile() {
             showAdd
             onAdd={() => {
               setEditingExperienceId(null);
-              setExpTitle('');
-              setExpCompany('');
-              setExpCity('');
+              setExpTitle("");
+              setExpCompany("");
+              setExpCity("");
               setExperienceModalOpen(true);
             }}
           />
 
-          {experiences.length === 0 ? (
-            <Text style={styles.emptyText}>
-              Nenhuma experiência adicionada ainda.
-            </Text>
+          {expLoading ? (
+            <ActivityIndicator color="#0B6B2F" style={{ marginVertical: 8 }} />
+          ) : experiences.length === 0 ? (
+            <Text style={styles.emptyText}>Nenhuma experiência adicionada ainda.</Text>
           ) : (
             experiences.map((item) => (
               <ExperienceCard
                 key={item.id}
-                title={item.title}
-                company={item.company}
-                city={item.city}
+                title={item.cargo}
+                company={item.empresa}
+                city={formatExperienciaPeriod(item.dtInicio, item.dtFim)}
                 onEdit={() => handleEditExperience(item)}
+                onDelete={() => handleDeleteExperience(item)}
               />
             ))
           )}
 
           <SectionTitle title="Currículo" />
-          <CurriculumCard />
+          <CurriculumCard
+            filename={curriculoNome}
+            loading={cvLoading}
+            onChanged={loadCurriculo}
+          />
+
+          <TouchableOpacity
+            style={styles.logout}
+            onPress={async () => {
+              await logout();
+              router.replace("/login" as Href);
+            }}
+          >
+            <Text style={styles.logoutText}>Sair da conta</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -144,7 +262,7 @@ export default function Profile() {
         <Pressable style={styles.modalOverlay} onPress={handleCloseExperienceModal}>
           <Pressable style={styles.modalCard} onPress={() => {}}>
             <Text style={styles.modalTitle}>
-              {editingExperienceId ? 'Editar experiência' : 'Adicionar experiência'}
+              {editingExperienceId != null ? "Editar experiência" : "Adicionar experiência"}
             </Text>
 
             <TextInput
@@ -161,24 +279,33 @@ export default function Profile() {
             />
             <TextInput
               style={styles.modalInput}
-              placeholder="Cidade"
+              placeholder="Cidade (opcional)"
               value={expCity}
               onChangeText={setExpCity}
             />
 
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalCancel}
-                onPress={handleCloseExperienceModal}
-              >
-                <Text style={styles.modalCancelText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalSave}
-                onPress={handleAddExperience}
-              >
-                <Text style={styles.modalSaveText}>Salvar</Text>
-              </TouchableOpacity>
+              {editingExperienceId != null ? (
+                <TouchableOpacity
+                  style={styles.modalDelete}
+                  onPress={() => {
+                    const item = experiences.find((e) => e.id === editingExperienceId);
+                    if (item) handleDeleteExperience(item);
+                  }}
+                >
+                  <Text style={styles.modalDeleteText}>Excluir</Text>
+                </TouchableOpacity>
+              ) : (
+                <View />
+              )}
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <TouchableOpacity style={styles.modalCancel} onPress={handleCloseExperienceModal}>
+                  <Text style={styles.modalCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalSave} onPress={handleAddExperience}>
+                  <Text style={styles.modalSaveText}>Salvar</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </Pressable>
         </Pressable>
@@ -198,56 +325,77 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   emptyText: {
-    color: '#666',
+    color: "#666",
     marginBottom: 12,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+    justifyContent: "center",
     padding: 20,
   },
   modalCard: {
-    backgroundColor: '#E5EEE3',
+    backgroundColor: "#E5EEE3",
     borderRadius: 16,
     padding: 20,
   },
   modalTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 12,
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#E5EEE3',
+    borderColor: "#ccc",
     borderRadius: 10,
     padding: 12,
     marginBottom: 10,
+    backgroundColor: "#fff",
   },
   modalActions: {
     marginTop: 8,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
     gap: 10,
   },
   modalCancel: {
-    backgroundColor: '#E5EEE3',
+    backgroundColor: "#E5EEE3",
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 10,
   },
   modalCancelText: {
-    color: '#333',
-    fontWeight: '600',
+    color: "#333",
+    fontWeight: "600",
   },
   modalSave: {
-    backgroundColor: '#0B6B2F',
+    backgroundColor: "#0B6B2F",
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 10,
   },
   modalSaveText: {
-    color: '#FFF',
-    fontWeight: '700',
+    color: "#FFF",
+    fontWeight: "700",
+  },
+  modalDelete: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  modalDeleteText: {
+    color: "#a00",
+    fontWeight: "700",
+  },
+  logout: {
+    marginTop: 28,
+    marginBottom: 40,
+    alignItems: "center",
+  },
+  logoutText: {
+    color: "#a00",
+    fontWeight: "600",
+    fontSize: 15,
   },
 });
