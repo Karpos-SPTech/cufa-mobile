@@ -1,13 +1,13 @@
 import { View, Image, StyleSheet, TouchableOpacity } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router"; // 1. Importar o router
+import { useRouter, type Href } from "expo-router";
 
 export default function Header() {
-  const router = useRouter(); // 2. Inicializar o router
+  const router = useRouter();
 
   return (
     <View style={styles.header}>
-      <TouchableOpacity onPress={() => router.push("/notifications")}>
+      <TouchableOpacity onPress={() => router.push("/notifications" as Href)}>
         <Feather name="bell" size={24} color="white" />
       </TouchableOpacity>
 
@@ -20,7 +20,7 @@ export default function Header() {
       {/* 3. Adicionar o onPress para navegar para a rota do perfil */}
       <TouchableOpacity
         style={styles.profileCircle}
-        onPress={() => router.push("/profile")}
+        onPress={() => router.push("/profile" as Href)}
       >
         <View style={styles.avatarPlaceholder} />
       </TouchableOpacity>

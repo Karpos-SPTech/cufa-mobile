@@ -1,4 +1,4 @@
-import { Tabs, useRouter } from "expo-router";
+import { Tabs, useRouter, type Href } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
 
 export default function TabLayout() {
@@ -42,7 +42,7 @@ export default function TabLayout() {
         listeners={{
           tabPress: (e) => {
             e.preventDefault();
-            router.push("/filter");
+            router.push("/filter" as Href);
           },
         }}
       />

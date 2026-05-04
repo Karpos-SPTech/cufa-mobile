@@ -1,120 +1,25 @@
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  Pressable,
-} from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect } from "react";
+import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { useRouter, type Href } from "expo-router";
 
+/**
+ * A edição de biografia foi unificada no modal "Editar perfil" em {@link ProfileHeader}.
+ * Mantemos esta rota para links antigos; redireciona para a aba perfil.
+ */
 export default function EditarBio() {
   const router = useRouter();
-  const { from, section } = useLocalSearchParams<{
-    from?: string;
-    section?: string;
-  }>();
-  const [bio, setBio] = useState('');
-  const modalTitle = section === 'sobre' ? 'Editar sobre você' : 'Editar Biografia';
 
   useEffect(() => {
-    if (from !== 'profile') {
-      router.replace('/(tabs)/profile');
-    }
-  }, [from, router]);
-
-  function handleClose() {
-    router.back();
-  }
-
-  function handleSave() {
-    // depois vamos conectar com state global ou API
-    handleClose();
-  }
-
-  if (from !== 'profile') {
-    return null;
-  }
+    router.replace("/(tabs)/profile" as Href);
+  }, [router]);
 
   return (
-    <Pressable style={styles.overlay} onPress={handleClose}>
-      <Pressable style={styles.container} onPress={() => {}}>
-        <Text style={styles.title}>{modalTitle}</Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Digite sobre você"
-          value={bio}
-          onChangeText={setBio}
-          multiline
-        />
-
-        <View style={styles.actions}>
-          <TouchableOpacity style={styles.cancelButton} onPress={handleClose}>
-            <Text style={styles.cancelText}>Cancelar</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.button} onPress={handleSave}>
-            <Text style={styles.buttonText}>Salvar</Text>
-          </TouchableOpacity>
-        </View>
-      </Pressable>
-    </Pressable>
+    <View style={styles.center}>
+      <ActivityIndicator color="#0B6B2F" size="large" />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  container: {
-    backgroundColor: '#FFF',
-    padding: 20,
-    borderRadius: 16,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#CCC',
-    borderRadius: 10,
-    padding: 15,
-    height: 120,
-    textAlignVertical: 'top',
-  },
-  actions: {
-    marginTop: 20,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-  },
-  cancelButton: {
-    backgroundColor: '#E5EEE3',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  cancelText: {
-    color: '#333',
-    fontWeight: '600',
-  },
-  button: {
-    backgroundColor: '#0B6B2F',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#FFF',
-    fontWeight: 'bold',
-  },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#E5EEE3" },
 });
