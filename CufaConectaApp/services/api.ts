@@ -1,4 +1,5 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
+import { DeviceEventEmitter } from "react-native";
 
 import { API_BASE_URL } from "../lib/config";
 import { storageGetItem, storageRemoveItem, storageSetItem } from "../lib/storage";
@@ -38,6 +39,18 @@ api.interceptors.request.use(async (config) => {
   }
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const status = error?.response?.status as number | undefined;
+    if (status === 401) {
+      await saveToken(null);
+      DeviceEventEmitter.emit("cufa:unauthorized");
+    }
+    return Promise.reject(error);
+  }
+);
 
 export async function saveToken(token: string | null) {
   if (token) {

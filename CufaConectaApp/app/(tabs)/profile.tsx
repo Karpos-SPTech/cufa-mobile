@@ -24,17 +24,13 @@ import * as experienciasApi from "../../services/experienciasService";
 import * as curriculosApi from "../../services/curriculosService";
 import { getUsuarioAtual } from "../../services/usuariosService";
 import { defaultExperienciaRange, formatExperienciaPeriod } from "../../lib/date";
-import type { ExperienciaApi } from "../../types/api";
+import type { ExperienciaApi, UsuarioPerfil } from "../../types/api";
 
 export default function Profile() {
   const router = useRouter();
   const { logout, refreshPerfil } = useAuth();
 
-  const [nome, setNome] = useState("");
-  const [biografia, setBiografia] = useState("");
-  const [cidade, setCidade] = useState("");
-  const [estado, setEstado] = useState<string | null>(null);
-  const [fotoUrl, setFotoUrl] = useState<string | null>(null);
+  const [usuarioPerfil, setUsuarioPerfil] = useState<UsuarioPerfil | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
   const [experiences, setExperiences] = useState<ExperienciaApi[]>([]);
@@ -53,17 +49,9 @@ export default function Profile() {
     setProfileLoading(true);
     try {
       const u = await getUsuarioAtual();
-      setNome(u.nome ?? "");
-      setBiografia(u.biografia ?? "");
-      setCidade(u.cidade ?? "");
-      setEstado(u.estado ?? null);
-      setFotoUrl(u.fotoUrl ?? null);
+      setUsuarioPerfil(u);
     } catch {
-      setNome("");
-      setBiografia("");
-      setCidade("");
-      setEstado(null);
-      setFotoUrl(null);
+      setUsuarioPerfil(null);
     } finally {
       setProfileLoading(false);
     }
@@ -188,19 +176,15 @@ export default function Profile() {
       <ScrollView style={styles.content}>
         {profileLoading ? (
           <ActivityIndicator color="#0B6B2F" style={{ marginTop: 16 }} />
-        ) : (
+        ) : usuarioPerfil ? (
           <ProfileHeader
-            nome={nome}
-            biografia={biografia}
-            cidade={cidade}
-            estado={estado}
-            fotoUrl={fotoUrl}
+            perfil={usuarioPerfil}
             onPerfilChanged={async () => {
               await loadProfile();
               await refreshPerfil();
             }}
           />
-        )}
+        ) : null}
 
         <View style={styles.inner}>
           <SectionTitle title="Sobre" />

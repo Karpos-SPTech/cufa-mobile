@@ -9,12 +9,32 @@ import {
   RefreshControl,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
+import * as Location from "expo-location";
 
 import Header from "../../components/Base/Header";
 import CardVaga from "../../components/Home/CardVaga";
 import { publicacaoPassaNoFiltroContrato, useFiltrosVagas } from "../../constants/FiltrosVagasContext";
 import { listarPublicacoes } from "../../services/publicacoesService";
-import type { Publicacao } from "../../types/api";
+import {
+  atualizarLocalizacaoUsuario,
+  recomendarVagasPorCoordenadas,
+} from "../../services/usuariosService";
+import { storageGetItem } from "../../lib/storage";
+import { TOKEN_KEY } from "../../services/api";
+import type { Publicacao, RecomendacaoVaga } from "../../types/api";
+
+function recomendacaoParaPublicacao(r: RecomendacaoVaga): Publicacao {
+  return {
+    publicacaoId: r.id,
+    empresaId: r.idEmpresa,
+    nomeEmpresa: r.nomeEmpresa,
+    titulo: r.titulo,
+    descricao: "Vaga sugerida com base na sua localização e nas publicações próximas.",
+    tipoContrato: r.tipoContrato,
+    dtExpiracao: null,
+    dtPublicacao: null,
+  };
+}
 
 export default function HomeScreen() {
   const { filtros } = useFiltrosVagas();
@@ -22,6 +42,8 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedPorLocalizacao, setFeedPorLocalizacao] = useState(false);
+  const [raioKm, setRaioKm] = useState<number | null>(null);
 
   const itensFiltrados = useMemo(
     () => items.filter((p) => publicacaoPassaNoFiltroContrato(p, filtros.contratos)),
@@ -30,7 +52,33 @@ export default function HomeScreen() {
 
   const load = useCallback(async () => {
     setError(null);
+    setFeedPorLocalizacao(false);
+    setRaioKm(null);
     try {
+      const token = await storageGetItem(TOKEN_KEY);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+
+      if (token && status === Location.PermissionStatus.GRANTED) {
+        try {
+          const pos = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          const { latitude, longitude } = pos.coords;
+
+          await atualizarLocalizacaoUsuario(latitude, longitude);
+          const rec = await recomendarVagasPorCoordenadas(latitude, longitude);
+          const pubs = (rec.recomendacoes ?? []).map(recomendacaoParaPublicacao);
+          if (pubs.length > 0) {
+            setItems(pubs);
+            setFeedPorLocalizacao(true);
+            setRaioKm(typeof rec.raioKm === "number" ? rec.raioKm : null);
+            return;
+          }
+        } catch {
+          /* segue para listagem geral */
+        }
+      }
+
       const data = await listarPublicacoes(1, 50);
       setItems(data.publicacoes ?? []);
     } catch {
@@ -73,6 +121,14 @@ export default function HomeScreen() {
         >
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
+          {feedPorLocalizacao ? (
+            <Text style={styles.hint}>
+              Vagas próximas à sua posição
+              {raioKm != null ? ` (raio referência ~${raioKm} km no servidor)` : ""} e ordenadas com apoio
+              de IA.
+            </Text>
+          ) : null}
+
           {items.length === 0 && !error ? (
             <Text style={styles.empty}>Nenhuma vaga disponível no momento.</Text>
           ) : null}
@@ -85,7 +141,6 @@ export default function HomeScreen() {
 
           {itensFiltrados.map((p) => {
             const pid = p.publicacaoId ?? 0;
-            // Backend omite chaves null (Jackson non_null): empresaId pode vir undefined.
             const eid = Number(p.empresaId ?? 0) || 0;
             if (!pid) return null;
             return (
@@ -124,6 +179,13 @@ const styles = StyleSheet.create({
     color: "#a00",
     marginBottom: 12,
     lineHeight: 20,
+  },
+  hint: {
+    color: "#0B6B2F",
+    fontSize: 13,
+    marginBottom: 12,
+    lineHeight: 18,
+    fontWeight: "600",
   },
   empty: {
     color: "#666",
