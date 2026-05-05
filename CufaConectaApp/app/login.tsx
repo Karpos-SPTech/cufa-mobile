@@ -13,6 +13,7 @@ import { useRouter, type Href } from "expo-router";
 
 import { useAuth } from "../constants/AuthContext";
 import { useVagas } from "../constants/VagasContext";
+import { formatApiError } from "../lib/formatApiError";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -48,11 +49,7 @@ export default function LoginScreen() {
         router.replace("/Home" as Href);
       }
     } catch (e: unknown) {
-      const msg =
-        e && typeof e === "object" && "response" in e
-          ? String((e as { response?: { data?: unknown } }).response?.data)
-          : "Não foi possível concluir. Verifique os dados e a URL da API.";
-      Alert.alert("Erro", msg.length > 200 ? "Falha na requisição." : msg);
+      Alert.alert("Erro", formatApiError(e, { maxLength: 220 }));
     } finally {
       setLoading(false);
     }

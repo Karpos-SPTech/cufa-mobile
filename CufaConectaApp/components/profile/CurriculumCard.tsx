@@ -11,26 +11,15 @@ import {
   ScrollView,
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
-import { isAxiosError } from "axios";
-
 import * as curriculosApi from "../../services/curriculosService";
 import type { AnaliseCurriculo } from "../../types/api";
+import { formatApiError } from "../../lib/formatApiError";
 
 type Props = {
   filename: string | null;
   loading: boolean;
   onChanged: () => void;
 };
-
-function mensagemErroApi(err: unknown): string {
-  if (isAxiosError(err)) {
-    const data = err.response?.data as { message?: string } | undefined;
-    if (data?.message && typeof data.message === "string") return data.message;
-    if (err.message) return err.message;
-  }
-  if (err instanceof Error && err.message) return err.message;
-  return "Não foi possível concluir a operação.";
-}
 
 export default function CurriculumCard({ filename, loading, onChanged }: Props) {
   const [analyzing, setAnalyzing] = useState(false);
@@ -53,7 +42,7 @@ export default function CurriculumCard({ filename, loading, onChanged }: Props) 
       Alert.alert("Sucesso", "Currículo enviado.");
       onChanged();
     } catch (err) {
-      Alert.alert("Erro", mensagemErroApi(err));
+      Alert.alert("Erro", formatApiError(err, { maxLength: 220 }));
     }
   }
 
@@ -76,7 +65,7 @@ export default function CurriculumCard({ filename, loading, onChanged }: Props) 
       setAnalise(data);
       setModalVisible(true);
     } catch (err) {
-      Alert.alert("Análise", mensagemErroApi(err));
+      Alert.alert("Análise", formatApiError(err, { maxLength: 220 }));
     } finally {
       setAnalyzing(false);
     }
@@ -94,7 +83,7 @@ export default function CurriculumCard({ filename, loading, onChanged }: Props) 
             Alert.alert("Removido", "Currículo excluído.");
             onChanged();
           } catch (err) {
-            Alert.alert("Erro", mensagemErroApi(err));
+            Alert.alert("Erro", formatApiError(err, { maxLength: 220 }));
           }
         },
       },

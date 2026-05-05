@@ -11,6 +11,8 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import * as Location from "expo-location";
 
+import { formatApiError } from "../../lib/formatApiError";
+
 import Header from "../../components/Base/Header";
 import CardVaga from "../../components/Home/CardVaga";
 import { publicacaoPassaNoFiltroContrato, useFiltrosVagas } from "../../constants/FiltrosVagasContext";
@@ -22,6 +24,7 @@ import {
 import { storageGetItem } from "../../lib/storage";
 import { TOKEN_KEY } from "../../services/api";
 import type { Publicacao, RecomendacaoVaga } from "../../types/api";
+import { API_BASE_URL } from "../../lib/config";
 
 function recomendacaoParaPublicacao(r: RecomendacaoVaga): Publicacao {
   return {
@@ -81,8 +84,12 @@ export default function HomeScreen() {
 
       const data = await listarPublicacoes(1, 50);
       setItems(data.publicacoes ?? []);
-    } catch {
-      setError("Não foi possível carregar as vagas. Confira a API e a URL em EXPO_PUBLIC_API_URL.");
+    } catch (e: unknown) {
+      const devHint = __DEV__ ? ` — ${formatApiError(e, { maxLength: 180 })}` : "";
+      const detail = __DEV__ ? ` (${API_BASE_URL})${devHint}` : "";
+      setError(
+        `Não foi possível carregar as vagas. Celular na mesma Wi‑Fi que o PC? Backend na porta 8080? Se usa tunnel do Expo, defina EXPO_PUBLIC_API_URL com o IP do computador.${detail}`
+      );
       setItems([]);
     } finally {
       setLoading(false);
