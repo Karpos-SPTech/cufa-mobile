@@ -28,6 +28,13 @@
     "plugins": [
       "expo-router",
       [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Usamos sua localização para recomendar vagas próximas e atualizar seu perfil na API.",
+          "locationWhenInUsePermission": "Usamos sua localização para recomendar vagas próximas e atualizar seu perfil na API."
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Permitir acesso às fotos para alterar a imagem do seu perfil."

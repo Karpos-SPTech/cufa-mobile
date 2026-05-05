@@ -6,6 +6,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { DeviceEventEmitter } from "react-native";
 
 import { storageGetItem, storageRemoveItem } from "../lib/storage";
 import * as authService from "../services/authService";
@@ -59,6 +60,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setReady(true);
     })();
+  }, []);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener("cufa:unauthorized", () => {
+      setToken(null);
+      setPerfil(null);
+    });
+    return () => sub.remove();
   }, []);
 
   const login = useCallback(async (email: string, senha: string) => {

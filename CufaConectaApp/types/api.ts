@@ -21,6 +21,8 @@ export interface Publicacao {
 /** GET /candidaturas/usuario — PublicacaoResponseDto */
 export interface PublicacaoResumo {
   publicacaoId: number;
+  /** Presente nas respostas atuais do backend; ausente em versões antigas da API. */
+  empresaId?: number;
   titulo: string;
   descricao: string;
   tipoContrato: string;
@@ -41,6 +43,8 @@ export interface UsuarioPerfil {
   cpf: string | null;
   telefone: string | null;
   escolaridade: string | null;
+  /** Data de nascimento (ISO `yyyy-MM-dd` ou array numérico do Jackson). */
+  dtNascimento?: string | number[] | null;
   idade: number | null;
   estadoCivil: string | null;
   estado: string | null;
@@ -49,6 +53,21 @@ export interface UsuarioPerfil {
   curriculoUrl: string | null;
   /** Path relativo (ex.: `/usuarios/fotos/download/...`) ou URL absoluta */
   fotoUrl: string | null;
+}
+
+/** GET /usuarios/recomendar — VagasRecomendadasResponseDto */
+export interface RecomendacaoVaga {
+  id: number;
+  titulo: string;
+  tipoContrato: string;
+  nomeEmpresa: string;
+  idEmpresa: number;
+}
+
+export interface VagasRecomendadasResponse {
+  recomendacoes: RecomendacaoVaga[];
+  totalVagas: number;
+  raioKm: number;
 }
 
 export interface ExperienciaApi {

@@ -3,6 +3,15 @@ export function isoDateFrom(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
+/** Converte yyyy-MM-dd (ou retorno de `normalizeApiDate`) para dd-MM-yyyy exigido pelo PUT `/usuarios`. */
+export function toDdMmYyyyFromIso(isoYyyyMmDd: string): string {
+  const base = normalizeApiDate(isoYyyyMmDd);
+  if (base.length < 10) return "";
+  const [y, m, d] = base.split("-");
+  if (!y || !m || !d) return "";
+  return `${d}-${m}-${y}`;
+}
+
 export function defaultExperienciaRange() {
   const end = new Date();
   const start = new Date();

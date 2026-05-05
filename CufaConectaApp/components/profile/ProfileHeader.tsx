@@ -15,28 +15,23 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useCallback, useState } from "react";
-import * as ImagePicker from "expo-image-picker";
 
 import { absoluteApiUrl } from "../../lib/urls";
 import * as usuariosApi from "../../services/usuariosService";
+import type { UsuarioPerfil } from "../../types/api";
 
 type Props = {
-  nome: string;
-  biografia: string;
-  cidade: string;
-  estado?: string | null;
-  fotoUrl?: string | null;
+  perfil: UsuarioPerfil;
   onPerfilChanged: () => Promise<void>;
 };
 
-export default function ProfileHeader({
-  nome,
-  biografia,
-  cidade,
-  estado,
-  fotoUrl,
-  onPerfilChanged,
-}: Props) {
+export default function ProfileHeader({ perfil, onPerfilChanged }: Props) {
+  const nome = perfil.nome ?? "";
+  const biografia = perfil.biografia ?? "";
+  const cidade = perfil.cidade ?? "";
+  const estado = perfil.estado ?? null;
+  const fotoUrl = perfil.fotoUrl ?? null;
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -45,78 +40,48 @@ export default function ProfileHeader({
   const [draftBio, setDraftBio] = useState(biografia);
   const [draftCidade, setDraftCidade] = useState(cidade);
   const [draftEstado, setDraftEstado] = useState(estado ?? "");
-  const [pickedImage, setPickedImage] = useState<{
-    uri: string;
-    name: string;
-    mimeType: string | null | undefined;
-  } | null>(null);
 
   const openEdit = useCallback(() => {
     setMenuOpen(false);
-    setDraftNome(nome);
-    setDraftBio(biografia);
-    setDraftCidade(cidade);
-    setDraftEstado(estado ?? "");
-    setPickedImage(null);
+    setDraftNome(perfil.nome ?? "");
+    setDraftBio(perfil.biografia ?? "");
+    setDraftCidade(perfil.cidade ?? "");
+    setDraftEstado(perfil.estado ?? "");
     setEditOpen(true);
-  }, [nome, biografia, cidade, estado]);
+  }, [perfil]);
 
   const closeEdit = useCallback(() => {
     if (saving) return;
     setEditOpen(false);
-    setPickedImage(null);
   }, [saving]);
-
-  const pickFoto = useCallback(async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert("Permissão", "Precisamos de acesso às fotos para alterar a imagem do perfil.");
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.85,
-    });
-    if (res.canceled || !res.assets?.[0]) return;
-    const a = res.assets[0];
-    const nameFromUri = a.uri.split("/").pop() ?? "foto.jpg";
-    setPickedImage({
-      uri: a.uri,
-      name: a.fileName ?? nameFromUri,
-      mimeType: a.mimeType,
-    });
-  }, []);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      await usuariosApi.patchPerfil({
+      const body = usuariosApi.buildUsuarioCadastroPut(perfil, {
         nome: draftNome.trim(),
         biografia: draftBio.trim(),
         cidade: draftCidade.trim(),
-        estado: draftEstado.trim() || undefined,
+        estado: draftEstado.trim(),
       });
-      if (pickedImage) {
-        await usuariosApi.uploadFotoPerfil({
-          uri: pickedImage.uri,
-          name: pickedImage.name,
-          mimeType: pickedImage.mimeType,
-        });
+      if (!body) {
+        Alert.alert(
+          "Cadastro incompleto",
+          "Para salvar pelo app, o backend precisa retornar CPF, telefone, escolaridade, data de nascimento e estado civil no seu perfil. Complete o cadastro e tente de novo."
+        );
+        return;
       }
+      await usuariosApi.putUsuarioDadosCadastro(body);
       await onPerfilChanged();
       setEditOpen(false);
-      setPickedImage(null);
     } catch {
       Alert.alert("Erro", "Não foi possível salvar o perfil. Tente novamente.");
     } finally {
       setSaving(false);
     }
-  }, [draftNome, draftBio, draftCidade, draftEstado, pickedImage, onPerfilChanged]);
+  }, [draftNome, draftBio, draftCidade, draftEstado, perfil, onPerfilChanged]);
 
   const remoteAvatar = absoluteApiUrl(fotoUrl);
-  const avatarDisplayUri = pickedImage?.uri ?? remoteAvatar;
 
   const location =
     cidade && estado ? `${cidade}, ${estado}` : cidade || estado || "";
@@ -159,79 +124,68 @@ export default function ProfileHeader({
             behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
             <View style={styles.editCard}>
-            <Text style={styles.editTitle}>Editar perfil</Text>
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <TouchableOpacity style={styles.photoRow} onPress={pickFoto} disabled={saving}>
-                {avatarDisplayUri ? (
-                  <Image source={{ uri: avatarDisplayUri }} style={styles.editAvatar} />
-                ) : (
-                  <View style={[styles.editAvatar, styles.avatarPlaceholder]}>
-                    <Feather name="user" size={36} color="#555" />
-                  </View>
-                )}
-                <Text style={styles.photoHint}>Toque para escolher outra foto</Text>
-              </TouchableOpacity>
+              <Text style={styles.editTitle}>Editar perfil</Text>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <Text style={styles.fieldLabel}>Nome</Text>
+                <TextInput
+                  style={styles.input}
+                  value={draftNome}
+                  onChangeText={setDraftNome}
+                  placeholder="Nome"
+                  editable={!saving}
+                />
 
-              <Text style={styles.fieldLabel}>Nome</Text>
-              <TextInput
-                style={styles.input}
-                value={draftNome}
-                onChangeText={setDraftNome}
-                placeholder="Nome"
-                editable={!saving}
-              />
+                <Text style={styles.fieldLabel}>Biografia</Text>
+                <TextInput
+                  style={[styles.input, styles.inputMultiline]}
+                  value={draftBio}
+                  onChangeText={setDraftBio}
+                  placeholder="Sobre você"
+                  multiline
+                  textAlignVertical="top"
+                  editable={!saving}
+                />
 
-              <Text style={styles.fieldLabel}>Biografia</Text>
-              <TextInput
-                style={[styles.input, styles.inputMultiline]}
-                value={draftBio}
-                onChangeText={setDraftBio}
-                placeholder="Sobre você"
-                multiline
-                textAlignVertical="top"
-                editable={!saving}
-              />
+                <Text style={styles.fieldLabel}>Cidade</Text>
+                <TextInput
+                  style={styles.input}
+                  value={draftCidade}
+                  onChangeText={setDraftCidade}
+                  placeholder="Cidade"
+                  editable={!saving}
+                />
 
-              <Text style={styles.fieldLabel}>Cidade</Text>
-              <TextInput
-                style={styles.input}
-                value={draftCidade}
-                onChangeText={setDraftCidade}
-                placeholder="Cidade"
-                editable={!saving}
-              />
+                <Text style={styles.fieldLabel}>Estado (UF)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={draftEstado}
+                  onChangeText={setDraftEstado}
+                  placeholder="Ex.: SP"
+                  autoCapitalize="characters"
+                  maxLength={2}
+                  editable={!saving}
+                />
+              </ScrollView>
 
-              <Text style={styles.fieldLabel}>Estado (UF)</Text>
-              <TextInput
-                style={styles.input}
-                value={draftEstado}
-                onChangeText={setDraftEstado}
-                placeholder="Ex.: SP"
-                autoCapitalize="characters"
-                maxLength={2}
-                editable={!saving}
-              />
-            </ScrollView>
-
-            <View style={styles.editActions}>
-              <TouchableOpacity style={styles.btnCancel} onPress={closeEdit} disabled={saving}>
-                <Text style={styles.btnCancelText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.btnSave} onPress={handleSave} disabled={saving}>
-                {saving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.btnSaveText}>Salvar</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+              <View style={styles.editActions}>
+                <TouchableOpacity style={styles.btnCancel} onPress={closeEdit} disabled={saving}>
+                  <Text style={styles.btnCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.btnSave} onPress={handleSave} disabled={saving}>
+                  {saving ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.btnSaveText}>Salvar</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </KeyboardAvoidingView>
         </View>
       </Modal>
 
-      {avatarDisplayUri ? (
-        <Image source={{ uri: avatarDisplayUri }} style={styles.avatar} />
+      {remoteAvatar ? (
+        <Image source={{ uri: remoteAvatar }} style={styles.avatar} />
       ) : (
         <View style={[styles.avatar, styles.avatarPlaceholder]}>
           <Feather name="user" size={40} color="#444" />
@@ -365,20 +319,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 12,
     color: "#0B6B2F",
-  },
-  photoRow: {
-    alignItems: "center",
-    marginBottom: 14,
-  },
-  editAvatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-  },
-  photoHint: {
-    marginTop: 8,
-    fontSize: 12,
-    color: "#666",
   },
   fieldLabel: {
     fontSize: 12,

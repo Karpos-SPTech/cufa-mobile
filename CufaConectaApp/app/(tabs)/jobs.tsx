@@ -50,7 +50,7 @@ export default function JobsScreen() {
               city={`Contrato: ${vaga.tipoContrato}`}
               description={vaga.descricao?.trim() || "Sem descrição."}
               publicacaoId={vaga.publicacaoId}
-              empresaId={0}
+              empresaId={Number(vaga.empresaId) || 0}
             />
           ))}
         </ScrollView>
