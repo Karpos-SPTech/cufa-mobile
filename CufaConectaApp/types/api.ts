@@ -82,3 +82,15 @@ export interface ExperienciaApi {
 export interface CurriculoInfo {
   filename: string;
 }
+
+/** Corpo de `analise` em POST /curriculos/curriculo/analisar — AnaliseCurriculoDto */
+export interface AnaliseCurriculo {
+  resumo: string;
+  pontosFortes: string[];
+  pontosMelhoria: string[];
+  sugestoes: string[];
+}
+
+export interface AnaliseCurriculoResponse {
+  analise: AnaliseCurriculo;
+}

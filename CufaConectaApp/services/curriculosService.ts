@@ -1,4 +1,4 @@
-import type { CurriculoInfo } from "../types/api";
+import type { AnaliseCurriculo, AnaliseCurriculoResponse, CurriculoInfo } from "../types/api";
 import { api, axiosFormDataConfig } from "./api";
 
 /** Backend POST /curriculos/update devolve texto (URL); POST /upload devolve JSON { filename }. */
@@ -37,4 +37,25 @@ export async function uploadCurriculo(file: {
 
 export async function removerCurriculo() {
   await api.delete("/curriculos");
+}
+
+/** POST /curriculos/curriculo/analisar — exige Ollama no backend; senão retorna erro 500. */
+export async function analisarCurriculoPdf(file: {
+  uri: string;
+  name: string;
+  mimeType?: string | null;
+}): Promise<AnaliseCurriculo> {
+  const form = new FormData();
+  form.append("file", {
+    uri: file.uri,
+    name: file.name,
+    type: file.mimeType ?? "application/pdf",
+  } as unknown as Blob);
+
+  const { data } = await api.post<AnaliseCurriculoResponse>(
+    "/curriculos/curriculo/analisar",
+    form,
+    axiosFormDataConfig()
+  );
+  return data.analise;
 }

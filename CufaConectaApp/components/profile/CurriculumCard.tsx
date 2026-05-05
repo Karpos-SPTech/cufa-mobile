@@ -1,7 +1,20 @@
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  ScrollView,
+} from "react-native";
 import * as DocumentPicker from "expo-document-picker";
+import { isAxiosError } from "axios";
 
 import * as curriculosApi from "../../services/curriculosService";
+import type { AnaliseCurriculo } from "../../types/api";
 
 type Props = {
   filename: string | null;
@@ -9,7 +22,21 @@ type Props = {
   onChanged: () => void;
 };
 
+function mensagemErroApi(err: unknown): string {
+  if (isAxiosError(err)) {
+    const data = err.response?.data as { message?: string } | undefined;
+    if (data?.message && typeof data.message === "string") return data.message;
+    if (err.message) return err.message;
+  }
+  if (err instanceof Error && err.message) return err.message;
+  return "Não foi possível concluir a operação.";
+}
+
 export default function CurriculumCard({ filename, loading, onChanged }: Props) {
+  const [analyzing, setAnalyzing] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [analise, setAnalise] = useState<AnaliseCurriculo | null>(null);
+
   async function handleAttach() {
     try {
       const res = await DocumentPicker.getDocumentAsync({
@@ -25,8 +52,33 @@ export default function CurriculumCard({ filename, loading, onChanged }: Props) 
       });
       Alert.alert("Sucesso", "Currículo enviado.");
       onChanged();
-    } catch {
-      Alert.alert("Erro", "Não foi possível enviar o arquivo.");
+    } catch (err) {
+      Alert.alert("Erro", mensagemErroApi(err));
+    }
+  }
+
+  async function handleAnalyze() {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: "application/pdf",
+        copyToCacheDirectory: true,
+      });
+      if (res.canceled || !res.assets?.[0]) return;
+      const asset = res.assets[0];
+
+      setAnalyzing(true);
+      setAnalise(null);
+      const data = await curriculosApi.analisarCurriculoPdf({
+        uri: asset.uri,
+        name: asset.name ?? "curriculo.pdf",
+        mimeType: asset.mimeType,
+      });
+      setAnalise(data);
+      setModalVisible(true);
+    } catch (err) {
+      Alert.alert("Análise", mensagemErroApi(err));
+    } finally {
+      setAnalyzing(false);
     }
   }
 
@@ -41,8 +93,8 @@ export default function CurriculumCard({ filename, loading, onChanged }: Props) 
             await curriculosApi.removerCurriculo();
             Alert.alert("Removido", "Currículo excluído.");
             onChanged();
-          } catch {
-            Alert.alert("Erro", "Não foi possível excluir.");
+          } catch (err) {
+            Alert.alert("Erro", mensagemErroApi(err));
           }
         },
       },
@@ -68,9 +120,74 @@ export default function CurriculumCard({ filename, loading, onChanged }: Props) 
           onPress={handleDelete}
           disabled={!filename}
         >
-          <Text style={styles.textGreen}>Excluir</Text>
+          <Text style={[styles.textGreen, !filename && styles.textDisabled]}>Excluir</Text>
         </TouchableOpacity>
       </View>
+
+      <TouchableOpacity
+        style={[styles.analyzeBtn, analyzing && styles.analyzeBtnDisabled]}
+        onPress={handleAnalyze}
+        disabled={analyzing}
+      >
+        {analyzing ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.textWhite}>Analisar currículo (PDF)</Text>
+        )}
+      </TouchableOpacity>
+
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <Pressable style={styles.overlay} onPress={() => setModalVisible(false)}>
+          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.handle} />
+            <Text style={styles.modalTitle}>Análise do currículo</Text>
+
+            {analise ? (
+              <ScrollView
+                style={styles.modalScroll}
+                contentContainerStyle={styles.modalScrollContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <Text style={styles.section}>Resumo</Text>
+                <Text style={styles.bodyText}>{analise.resumo}</Text>
+
+                <Text style={styles.section}>Pontos fortes</Text>
+                {analise.pontosFortes.map((item, i) => (
+                  <Text key={`f-${i}`} style={styles.bodyText}>
+                    • {item}
+                  </Text>
+                ))}
+
+                <Text style={styles.section}>Melhorias</Text>
+                {analise.pontosMelhoria.map((item, i) => (
+                  <Text key={`m-${i}`} style={styles.bodyText}>
+                    • {item}
+                  </Text>
+                ))}
+
+                <Text style={styles.section}>Sugestões</Text>
+                {analise.sugestoes.map((item, i) => (
+                  <Text key={`s-${i}`} style={styles.bodyText}>
+                    • {item}
+                  </Text>
+                ))}
+              </ScrollView>
+            ) : null}
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.btnClose} onPress={() => setModalVisible(false)}>
+                <Text style={styles.btnCloseText}>Fechar</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -102,10 +219,90 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
   },
+  analyzeBtn: {
+    backgroundColor: "#0B6B2F",
+    paddingVertical: 12,
+    borderRadius: 20,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  analyzeBtnDisabled: {
+    opacity: 0.7,
+  },
   textWhite: {
     color: "#fff",
+    fontWeight: "600",
   },
   textGreen: {
     color: "#0B6B2F",
+    fontWeight: "600",
+  },
+  textDisabled: {
+    opacity: 0.45,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  modalCard: {
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: "88%",
+    paddingBottom: 8,
+  },
+  handle: {
+    width: 48,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: "#ccc",
+    alignSelf: "center",
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    textAlign: "center",
+    marginBottom: 8,
+    paddingHorizontal: 16,
+    color: "#0B6B2F",
+  },
+  modalScroll: {
+    maxHeight: 420,
+  },
+  modalScrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  section: {
+    marginTop: 12,
+    fontWeight: "700",
+    fontSize: 15,
+    color: "#222",
+  },
+  bodyText: {
+    marginTop: 4,
+    fontSize: 14,
+    color: "#444",
+    lineHeight: 20,
+  },
+  modalActions: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+  },
+  btnClose: {
+    backgroundColor: "#0B6B2F",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  btnCloseText: {
+    color: "#fff",
+    fontWeight: "800",
   },
 });
