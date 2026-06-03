@@ -46,7 +46,7 @@ export default function LoginScreen() {
       } else {
         await login(email.trim(), senha);
         await refreshCandidaturas();
-        router.replace("/Home" as Href);
+        router.replace("/dashboard" as Href);
       }
     } catch (e: unknown) {
       Alert.alert("Erro", formatApiError(e, { maxLength: 220 }));
