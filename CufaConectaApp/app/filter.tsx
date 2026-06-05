@@ -4,7 +4,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Switch,
   TouchableOpacity,
   Pressable,
   SafeAreaView,
@@ -22,15 +21,11 @@ export default function FilterModal() {
   const { filtros, setFiltros, setContratos, resetFiltros } = useFiltrosVagas();
 
   const [distance, setDistance] = useState<number[]>([...filtros.distanciaKm]);
-  const [flexibleSchedule, setFlexibleSchedule] = useState(filtros.horarioFlexivel);
-  const [freeDress, setFreeDress] = useState(filtros.vestimentaLivre);
   const [contracts, setContracts] = useState<ContratosFiltro>({ ...filtros.contratos });
 
   useFocusEffect(
     useCallback(() => {
       setDistance([...filtros.distanciaKm]);
-      setFlexibleSchedule(filtros.horarioFlexivel);
-      setFreeDress(filtros.vestimentaLivre);
       setContracts({ ...filtros.contratos });
     }, [filtros])
   );
@@ -43,8 +38,6 @@ export default function FilterModal() {
     setContratos(contracts);
     setFiltros({
       distanciaKm: [distance[0] ?? 0, distance[1] ?? 100],
-      horarioFlexivel: flexibleSchedule,
-      vestimentaLivre: freeDress,
     });
     router.back();
   }
@@ -62,8 +55,8 @@ export default function FilterModal() {
             <View style={styles.handle} />
             <Text style={styles.title}>Filtros</Text>
             <Text style={styles.hint}>
-              Tipo de contrato filtra a lista na tela inicial. Demais opções ficam salvas para quando
-              a API tiver esses dados.
+              Tipo de contrato filtra a lista na tela inicial. A distância ficará ativa quando a API
+              tiver esse dado.
             </Text>
 
             <View style={styles.row}>
@@ -104,28 +97,6 @@ export default function FilterModal() {
                 trackStyle={{ height: 6, borderRadius: 999 }}
                 thumbStyle={{ width: 18, height: 18 }}
               />
-            </View>
-
-            <View style={styles.switchRow}>
-              <View style={styles.switchItem}>
-                <Text style={styles.label}>Horário flexível</Text>
-                <Switch
-                  value={flexibleSchedule}
-                  onValueChange={setFlexibleSchedule}
-                  trackColor={{ false: "#d0d8d0", true: "#006916" }}
-                  thumbColor="#ffffff"
-                />
-              </View>
-
-              <View style={styles.switchItem}>
-                <Text style={styles.label}>Vestimenta livre</Text>
-                <Switch
-                  value={freeDress}
-                  onValueChange={setFreeDress}
-                  trackColor={{ false: "#d0d8d0", true: "#006916" }}
-                  thumbColor="#ffffff"
-                />
-              </View>
             </View>
           </ScrollView>
 
@@ -220,16 +191,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     color: "#111",
-  },
-  switchRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 10,
-    marginBottom: 8,
-  },
-  switchItem: {
-    alignItems: "center",
-    width: "48%",
   },
   actions: {
     flexDirection: "row",

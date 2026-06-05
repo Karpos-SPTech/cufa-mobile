@@ -17,11 +17,18 @@ import { formatApiError } from "../../lib/formatApiError";
 
 type Props = {
   filename: string | null;
+  curriculoUrl?: string | null;
   loading: boolean;
   onChanged: () => void;
 };
 
-export default function CurriculumCard({ filename, loading, onChanged }: Props) {
+function filenameFromUrl(url: string): string {
+  const clean = url.split("?")[0] ?? url;
+  const part = clean.split("/").pop();
+  return part?.trim() || "curriculo.pdf";
+}
+
+export default function CurriculumCard({ filename, curriculoUrl, loading, onChanged }: Props) {
   const [analyzing, setAnalyzing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [analise, setAnalise] = useState<AnaliseCurriculo | null>(null);
@@ -92,7 +99,10 @@ export default function CurriculumCard({ filename, loading, onChanged }: Props) 
     ]);
   }
 
-  const display = filename && filename.length > 0 ? `📎 ${filename}` : "Nenhum arquivo anexado";
+  const resolvedName =
+    filename?.trim() ||
+    (curriculoUrl?.trim() ? filenameFromUrl(curriculoUrl.trim()) : null);
+  const display = resolvedName ? `📎 ${resolvedName}` : "Nenhum arquivo anexado";
 
   return (
     <View style={styles.container}>
@@ -109,9 +119,9 @@ export default function CurriculumCard({ filename, loading, onChanged }: Props) 
         <TouchableOpacity
           style={styles.secondary}
           onPress={handleDelete}
-          disabled={!filename}
+          disabled={!resolvedName}
         >
-          <Text style={[styles.textGreen, !filename && styles.textDisabled]}>Excluir</Text>
+          <Text style={[styles.textGreen, !resolvedName && styles.textDisabled]}>Excluir</Text>
         </TouchableOpacity>
       </View>
 

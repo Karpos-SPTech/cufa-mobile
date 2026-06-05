@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter, type Href } from "expo-router";
 
@@ -23,15 +23,32 @@ import CurriculumCard from "../../components/profile/CurriculumCard";
 import * as experienciasApi from "../../services/experienciasService";
 import * as curriculosApi from "../../services/curriculosService";
 import { getUsuarioAtual } from "../../services/usuariosService";
-import { defaultExperienciaRange, formatExperienciaPeriod } from "../../lib/date";
+import {
+  defaultExperienciaRange,
+  formatExperienciaPeriod,
+  normalizeApiDate,
+  toDdMmYyyyFromIso,
+} from "../../lib/date";
 import type { ExperienciaApi, UsuarioPerfil } from "../../types/api";
+
+function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
+  if (!value?.trim()) return null;
+  return (
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value.trim()}</Text>
+    </View>
+  );
+}
 
 export default function Profile() {
   const router = useRouter();
-  const { logout, refreshPerfil } = useAuth();
+  const { logout, refreshPerfil, perfil: perfilAuth } = useAuth();
+  const openProfileEditRef = useRef<(() => void) | null>(null);
 
   const [usuarioPerfil, setUsuarioPerfil] = useState<UsuarioPerfil | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState(false);
 
   const [experiences, setExperiences] = useState<ExperienciaApi[]>([]);
   const [expLoading, setExpLoading] = useState(true);
@@ -43,19 +60,23 @@ export default function Profile() {
   const [expTitle, setExpTitle] = useState("");
   const [expCompany, setExpCompany] = useState("");
   const [expCity, setExpCity] = useState("");
+  const [expDtInicio, setExpDtInicio] = useState("");
+  const [expDtFim, setExpDtFim] = useState("");
   const [editingExperienceId, setEditingExperienceId] = useState<number | null>(null);
 
   const loadProfile = useCallback(async () => {
     setProfileLoading(true);
+    setProfileError(false);
     try {
       const u = await getUsuarioAtual();
       setUsuarioPerfil(u);
     } catch {
-      setUsuarioPerfil(null);
+      setUsuarioPerfil(perfilAuth);
+      setProfileError(!perfilAuth);
     } finally {
       setProfileLoading(false);
     }
-  }, []);
+  }, [perfilAuth]);
 
   const loadExperiencias = useCallback(async () => {
     setExpLoading(true);
@@ -89,15 +110,28 @@ export default function Profile() {
     }, [loadProfile, loadExperiencias, loadCurriculo])
   );
 
+  const resetExperienceForm = () => {
+    setExpTitle("");
+    setExpCompany("");
+    setExpCity("");
+    setExpDtInicio("");
+    setExpDtFim("");
+    setEditingExperienceId(null);
+  };
+
   const handleAddExperience = async () => {
     if (!expTitle.trim() || !expCompany.trim()) {
+      Alert.alert("Atenção", "Preencha cargo e empresa.");
       return;
     }
 
     const empresaLabel = expCity.trim()
       ? `${expCompany.trim()} (${expCity.trim()})`
       : expCompany.trim();
-    const { dtInicio, dtFim } = defaultExperienciaRange();
+
+    const fallback = defaultExperienciaRange();
+    const dtInicio = expDtInicio.trim() || fallback.dtInicio;
+    const dtFim = expDtFim.trim() || fallback.dtFim;
 
     try {
       if (editingExperienceId != null) {
@@ -116,28 +150,24 @@ export default function Profile() {
         });
       }
       await loadExperiencias();
+      resetExperienceForm();
+      setExperienceModalOpen(false);
     } catch {
       Alert.alert("Erro", "Não foi possível salvar a experiência.");
     }
-
-    setExpTitle("");
-    setExpCompany("");
-    setExpCity("");
-    setEditingExperienceId(null);
-    setExperienceModalOpen(false);
   };
 
   const handleCloseExperienceModal = () => {
     setExperienceModalOpen(false);
-    setEditingExperienceId(null);
-    setExpTitle("");
-    setExpCompany("");
-    setExpCity("");
+    resetExperienceForm();
   };
 
   const handleEditExperience = (item: ExperienciaApi) => {
     setEditingExperienceId(item.id);
     setExpTitle(item.cargo);
+    setExpDtInicio(normalizeApiDate(item.dtInicio));
+    setExpDtFim(normalizeApiDate(item.dtFim));
+
     const raw = item.empresa;
     const match = raw.match(/^(.*) \((.*)\)$/);
     if (match) {
@@ -169,72 +199,116 @@ export default function Profile() {
     ]);
   };
 
+  const perfil = usuarioPerfil ?? perfilAuth;
+
   return (
     <View style={styles.container}>
       <Header />
 
-      <ScrollView style={styles.content}>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {profileLoading ? (
           <ActivityIndicator color="#0B6B2F" style={{ marginTop: 16 }} />
-        ) : usuarioPerfil ? (
+        ) : perfil ? (
           <ProfileHeader
-            perfil={usuarioPerfil}
+            perfil={perfil}
+            onRegisterOpenEdit={(openEdit) => {
+              openProfileEditRef.current = openEdit;
+            }}
             onPerfilChanged={async () => {
               await loadProfile();
               await refreshPerfil();
+              await loadCurriculo();
             }}
           />
+        ) : profileError ? (
+          <Text style={styles.errorText}>Não foi possível carregar seu perfil.</Text>
         ) : null}
 
-        <View style={styles.inner}>
-          <SectionTitle title="Sobre" />
+        {perfil ? (
+          <View style={styles.inner}>
+            <SectionTitle
+              title="Sobre"
+              onEdit={() => openProfileEditRef.current?.()}
+            />
 
-          <SectionTitle
-            title="Experiência"
-            showAdd
-            onAdd={() => {
-              setEditingExperienceId(null);
-              setExpTitle("");
-              setExpCompany("");
-              setExpCity("");
-              setExperienceModalOpen(true);
-            }}
-          />
-
-          {expLoading ? (
-            <ActivityIndicator color="#0B6B2F" style={{ marginVertical: 8 }} />
-          ) : experiences.length === 0 ? (
-            <Text style={styles.emptyText}>Nenhuma experiência adicionada ainda.</Text>
-          ) : (
-            experiences.map((item) => (
-              <ExperienceCard
-                key={item.id}
-                title={item.cargo}
-                company={item.empresa}
-                city={formatExperienciaPeriod(item.dtInicio, item.dtFim)}
-                onEdit={() => handleEditExperience(item)}
-                onDelete={() => handleDeleteExperience(item)}
+            <View style={styles.aboutCard}>
+              <Text style={styles.aboutBio}>
+                {perfil.biografia?.trim() || "Nenhuma biografia cadastrada. Toque em editar para adicionar."}
+              </Text>
+              <InfoRow label="CPF" value={perfil.cpf} />
+              <InfoRow label="Telefone" value={perfil.telefone} />
+              <InfoRow
+                label="Nascimento"
+                value={
+                  perfil.dtNascimento != null
+                    ? toDdMmYyyyFromIso(normalizeApiDate(perfil.dtNascimento))
+                    : null
+                }
               />
-            ))
-          )}
+              <InfoRow label="Escolaridade" value={perfil.escolaridade} />
+              <InfoRow label="Estado civil" value={perfil.estadoCivil} />
+              {perfil.idade != null ? (
+                <InfoRow label="Idade" value={`${perfil.idade} anos`} />
+              ) : null}
+            </View>
 
-          <SectionTitle title="Currículo" />
-          <CurriculumCard
-            filename={curriculoNome}
-            loading={cvLoading}
-            onChanged={loadCurriculo}
-          />
+            <SectionTitle
+              title="Experiência"
+              showAdd
+              showEdit={false}
+              onAdd={() => {
+                resetExperienceForm();
+                const { dtInicio, dtFim } = defaultExperienciaRange();
+                setExpDtInicio(dtInicio);
+                setExpDtFim(dtFim);
+                setExperienceModalOpen(true);
+              }}
+            />
 
-          <TouchableOpacity
-            style={styles.logout}
-            onPress={async () => {
-              await logout();
-              router.replace("/login" as Href);
-            }}
-          >
-            <Text style={styles.logoutText}>Sair da conta</Text>
-          </TouchableOpacity>
-        </View>
+            {expLoading ? (
+              <ActivityIndicator color="#0B6B2F" style={{ marginVertical: 8 }} />
+            ) : experiences.length === 0 ? (
+              <Text style={styles.emptyText}>Nenhuma experiência adicionada ainda.</Text>
+            ) : (
+              experiences.map((item) => (
+                <ExperienceCard
+                  key={item.id}
+                  title={item.cargo}
+                  company={item.empresa}
+                  period={formatExperienciaPeriod(item.dtInicio, item.dtFim)}
+                  onEdit={() => handleEditExperience(item)}
+                  onDelete={() => handleDeleteExperience(item)}
+                />
+              ))
+            )}
+
+            <SectionTitle title="Currículo" showEdit={false} />
+            <CurriculumCard
+              filename={curriculoNome}
+              curriculoUrl={perfil.curriculoUrl}
+              loading={cvLoading}
+              onChanged={async () => {
+                await loadCurriculo();
+                await loadProfile();
+                await refreshPerfil();
+              }}
+            />
+
+            <TouchableOpacity
+              style={styles.logout}
+              onPress={async () => {
+                await logout();
+                router.replace("/login" as Href);
+              }}
+            >
+              <Text style={styles.logoutText}>Sair da conta</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
       </ScrollView>
 
       <Modal
@@ -267,6 +341,20 @@ export default function Profile() {
               value={expCity}
               onChangeText={setExpCity}
             />
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Início (AAAA-MM-DD)"
+              value={expDtInicio}
+              onChangeText={setExpDtInicio}
+              autoCapitalize="none"
+            />
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Fim (AAAA-MM-DD)"
+              value={expDtFim}
+              onChangeText={setExpDtFim}
+              autoCapitalize="none"
+            />
 
             <View style={styles.modalActions}>
               {editingExperienceId != null ? (
@@ -282,7 +370,7 @@ export default function Profile() {
               ) : (
                 <View />
               )}
-              <View style={{ flexDirection: "row", gap: 10 }}>
+              <View style={styles.modalButtons}>
                 <TouchableOpacity style={styles.modalCancel} onPress={handleCloseExperienceModal}>
                   <Text style={styles.modalCancelText}>Cancelar</Text>
                 </TouchableOpacity>
@@ -301,16 +389,52 @@ export default function Profile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#E5EEE3",
   },
   content: {
     flex: 1,
   },
+  contentContainer: {
+    paddingBottom: 32,
+  },
   inner: {
-    padding: 20,
+    paddingHorizontal: 20,
+  },
+  aboutCard: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 8,
+  },
+  aboutBio: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: "#333",
+    marginBottom: 10,
+  },
+  infoRow: {
+    marginTop: 8,
+  },
+  infoLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#0B6B2F",
+    textTransform: "uppercase",
+  },
+  infoValue: {
+    fontSize: 14,
+    color: "#333",
+    marginTop: 2,
   },
   emptyText: {
     color: "#666",
     marginBottom: 12,
+  },
+  errorText: {
+    color: "#a00",
+    textAlign: "center",
+    marginTop: 24,
+    paddingHorizontal: 20,
   },
   modalOverlay: {
     flex: 1,
@@ -319,7 +443,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalCard: {
-    backgroundColor: "#E5EEE3",
+    backgroundColor: "#FFF",
     borderRadius: 16,
     padding: 20,
   },
@@ -327,6 +451,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     marginBottom: 12,
+    color: "#0B6B2F",
   },
   modalInput: {
     borderWidth: 1,
@@ -334,7 +459,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 12,
     marginBottom: 10,
-    backgroundColor: "#fff",
+    backgroundColor: "#fafafa",
   },
   modalActions: {
     marginTop: 8,
@@ -342,6 +467,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     flexWrap: "wrap",
+    gap: 10,
+  },
+  modalButtons: {
+    flexDirection: "row",
     gap: 10,
   },
   modalCancel: {
@@ -374,7 +503,7 @@ const styles = StyleSheet.create({
   },
   logout: {
     marginTop: 28,
-    marginBottom: 40,
+    marginBottom: 16,
     alignItems: "center",
   },
   logoutText: {

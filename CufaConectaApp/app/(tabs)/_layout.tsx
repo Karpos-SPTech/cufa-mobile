@@ -8,36 +8,51 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarShowLabel: false,
+        tabBarShowLabel: true,
         tabBarActiveTintColor: "#fff",
         tabBarInactiveTintColor: "#c7e6cf",
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "600",
+          marginTop: 2,
+        },
         tabBarStyle: {
           backgroundColor: "#006916",
           borderTopWidth: 0,
-          height: 60,
-          paddingBottom: 5,
+          height: 72,
+          paddingBottom: 8,
           paddingTop: 6,
         },
       }}
     >
       <Tabs.Screen
+        name="index"
+        options={{
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
         name="Home"
         options={{
-          tabBarIcon: ({ color }) => <Feather name="home" size={28} color={color} />,
+          title: "Início",
+          tabBarIcon: ({ color }) => <Feather name="home" size={24} color={color} />,
         }}
       />
 
       <Tabs.Screen
         name="jobs"
         options={{
-          tabBarIcon: ({ color }) => <Feather name="briefcase" size={28} color={color} />,
+          title: "Candidaturas",
+          tabBarIcon: ({ color }) => <Feather name="briefcase" size={24} color={color} />,
         }}
       />
 
       <Tabs.Screen
         name="filter-tab"
         options={{
-          tabBarIcon: ({ color }) => <Ionicons name="filter" size={28} color={color} />,
+          title: "Filtros",
+          tabBarIcon: ({ color }) => <Ionicons name="filter" size={24} color={color} />,
         }}
         listeners={{
           tabPress: (e) => {

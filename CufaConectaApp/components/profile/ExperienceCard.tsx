@@ -1,35 +1,42 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { Feather } from "@expo/vector-icons";
 
 interface Props {
   title: string;
   company: string;
-  city: string;
+  period: string;
   onEdit?: () => void;
   onDelete?: () => void;
 }
 
-export default function ExperienceCard({ title, company, city, onEdit, onDelete }: Props) {
+export default function ExperienceCard({ title, company, period, onEdit, onDelete }: Props) {
   return (
     <View style={styles.card}>
       <View style={styles.left}>
-        <View style={styles.circle} />
+        <View style={styles.circle}>
+          <Feather name="briefcase" size={18} color="#0B6B2F" />
+        </View>
 
-        <View>
+        <View style={styles.info}>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.subtitle}>{company}</Text>
-          <Text style={styles.city}>{city}</Text>
+          {period ? <Text style={styles.period}>{period}</Text> : null}
         </View>
       </View>
 
       <View style={styles.actions}>
         {onDelete ? (
-          <TouchableOpacity style={styles.editButton} onPress={onDelete} hitSlop={8}>
+          <TouchableOpacity style={styles.actionButton} onPress={onDelete} hitSlop={8}>
             <Feather name="trash-2" size={16} color="#a00" />
           </TouchableOpacity>
         ) : null}
-        <TouchableOpacity style={styles.editButton} onPress={onEdit} disabled={!onEdit}>
-          <Feather name="edit-2" size={16} color="#0B6B2F" />
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={onEdit}
+          disabled={!onEdit}
+          hitSlop={8}
+        >
+          <Feather name="edit-2" size={16} color={onEdit ? "#0B6B2F" : "#aaa"} />
         </TouchableOpacity>
       </View>
     </View>
@@ -38,41 +45,52 @@ export default function ExperienceCard({ title, company, city, onEdit, onDelete 
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderColor: '#ccc',
+    borderColor: "#d8dfd6",
   },
   left: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+    paddingRight: 8,
   },
   circle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#E6E6E6',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#E5EEE3",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  info: {
+    flex: 1,
   },
   actions: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
   },
-  editButton: {
+  actionButton: {
     padding: 6,
   },
   title: {
-    fontWeight: 'bold',
-    color: '#0B6B2F',
+    fontWeight: "700",
+    color: "#0B6B2F",
+    fontSize: 15,
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: 13,
+    color: "#333",
+    marginTop: 2,
   },
-  city: {
+  period: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
+    marginTop: 4,
   },
 });

@@ -6,6 +6,7 @@ import "react-native-reanimated";
 
 import { AuthProvider } from "../constants/AuthContext";
 import { FiltrosVagasProvider } from "../constants/FiltrosVagasContext";
+import { NotificationsProvider } from "../constants/NotificationsContext";
 import { VagasProvider } from "../constants/VagasContext";
 
 export default function RootLayout() {
@@ -13,42 +14,44 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AuthProvider>
         <VagasProvider>
-          <FiltrosVagasProvider>
-            <ThemeProvider value={DefaultTheme}>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="login" />
+          <NotificationsProvider>
+            <FiltrosVagasProvider>
+              <ThemeProvider value={DefaultTheme}>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="login" />
 
-                <Stack.Screen name="(tabs)" />
+                  <Stack.Screen name="(tabs)" />
 
-                <Stack.Screen
-                  name="filter"
-                  options={{
-                    presentation: "transparentModal",
-                    animation: "fade",
-                    contentStyle: { backgroundColor: "transparent" },
-                  }}
-                />
-                <Stack.Screen
-                  name="notifications"
-                  options={{
-                    presentation: "transparentModal",
-                    animation: "fade",
-                    contentStyle: { backgroundColor: "transparent" },
-                  }}
-                />
-                <Stack.Screen
-                  name="editar-bio"
-                  options={{
-                    presentation: "transparentModal",
-                    animation: "fade",
-                    contentStyle: { backgroundColor: "transparent" },
-                  }}
-                />
-              </Stack>
+                  <Stack.Screen
+                    name="filter"
+                    options={{
+                      presentation: "transparentModal",
+                      animation: "fade",
+                      contentStyle: { backgroundColor: "transparent" },
+                    }}
+                  />
+                  <Stack.Screen
+                    name="notifications"
+                    options={{
+                      presentation: "transparentModal",
+                      animation: "fade",
+                      contentStyle: { backgroundColor: "transparent" },
+                    }}
+                  />
+                  <Stack.Screen
+                    name="editar-bio"
+                    options={{
+                      presentation: "transparentModal",
+                      animation: "fade",
+                      contentStyle: { backgroundColor: "transparent" },
+                    }}
+                  />
+                </Stack>
 
-              <StatusBar style="light" translucent />
-            </ThemeProvider>
-          </FiltrosVagasProvider>
+                <StatusBar style="light" translucent />
+              </ThemeProvider>
+            </FiltrosVagasProvider>
+          </NotificationsProvider>
         </VagasProvider>
       </AuthProvider>
     </SafeAreaProvider>

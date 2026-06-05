@@ -32,6 +32,14 @@ export function normalizeApiDate(raw: unknown): string {
 export function formatExperienciaPeriod(dtInicio: unknown, dtFim: unknown) {
   const a = normalizeApiDate(dtInicio);
   const b = normalizeApiDate(dtFim);
-  if (!a || !b) return "";
-  return `${a} → ${b}`;
+  if (!a && !b) return "";
+  if (a && b) return `${formatIsoToPtBr(a)} – ${formatIsoToPtBr(b)}`;
+  return formatIsoToPtBr(a || b);
+}
+
+function formatIsoToPtBr(iso: string): string {
+  if (iso.length < 10) return iso;
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return iso;
+  return `${d}/${m}/${y}`;
 }
