@@ -7,7 +7,7 @@ export async function getUsuarioAtual() {
   return data;
 }
 
-/** Corpo do PUT `/usuarios` (UsuarioUpdateRequestDto). Campo `nome` é opcional no backend. */
+/** Corpo do PUT `/usuarios` (UsuarioUpdateRequestDto). */
 export type UsuarioDadosCadastroPut = {
   nome?: string;
   cpf: string;
@@ -22,50 +22,144 @@ export type UsuarioDadosCadastroPut = {
 
 export type PerfilEditFields = {
   nome: string;
-  cidade: string;
+  cpf: string;
+  telefone: string;
+  escolaridade: string;
+  dtNascimento: string;
+  estadoCivil: string;
   estado: string;
+  cidade: string;
   biografia: string;
 };
 
-/**
- * Monta o corpo do cadastro completo exigido pelo backend.
- * Retorna `null` se faltar CPF, telefone, escolaridade, data de nascimento ou estado civil no perfil atual.
- */
-export function buildUsuarioCadastroPut(
-  atual: UsuarioPerfil,
-  edits: PerfilEditFields
-): UsuarioDadosCadastroPut | null {
-  const cpf = atual.cpf?.trim();
-  const telefone = atual.telefone?.trim();
-  const escolaridade = atual.escolaridade?.trim();
-  const estadoCivil = atual.estadoCivil?.trim();
-  const rawDt = atual.dtNascimento;
-  const iso = rawDt != null ? normalizeApiDate(rawDt) : "";
-  const dtNascimento = iso ? toDdMmYyyyFromIso(iso) : "";
+export function perfilEditFieldsFromUsuario(perfil: UsuarioPerfil): PerfilEditFields {
+  const iso = perfil.dtNascimento != null ? normalizeApiDate(perfil.dtNascimento) : "";
+  return {
+    nome: perfil.nome ?? "",
+    cpf: perfil.cpf ?? "",
+    telefone: perfil.telefone ?? "",
+    escolaridade: perfil.escolaridade ?? "",
+    dtNascimento: iso ? toDdMmYyyyFromIso(iso) : "",
+    estadoCivil: perfil.estadoCivil ?? "",
+    estado: perfil.estado ?? "",
+    cidade: perfil.cidade ?? "",
+    biografia: perfil.biografia ?? "",
+  };
+}
 
-  if (!cpf || !telefone || !escolaridade || !dtNascimento || !estadoCivil) {
-    return null;
+function onlyDigits(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+function isValidCpfDigits(cpf: string): boolean {
+  if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+
+  let sum = 0;
+  for (let i = 0; i < 9; i += 1) sum += Number(cpf[i]) * (10 - i);
+  let check = (sum * 10) % 11;
+  if (check === 10) check = 0;
+  if (check !== Number(cpf[9])) return false;
+
+  sum = 0;
+  for (let i = 0; i < 10; i += 1) sum += Number(cpf[i]) * (11 - i);
+  check = (sum * 10) % 11;
+  if (check === 10) check = 0;
+  return check === Number(cpf[10]);
+}
+
+function isValidBirthDate(value: string): boolean {
+  const match = value.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (!match) return false;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day &&
+    year >= 1900 &&
+    year <= new Date().getFullYear()
+  );
+}
+
+/** Valida campos exigidos pelo backend antes do PUT. */
+export function validatePerfilEdit(fields: PerfilEditFields): string | null {
+  const cpfDigits = onlyDigits(fields.cpf);
+  if (cpfDigits.length !== 11) {
+    return "Informe um CPF com 11 dígitos.";
+  }
+  if (!isValidCpfDigits(cpfDigits)) {
+    return "CPF inválido.";
   }
 
-  const estado = edits.estado.trim() || atual.estado?.trim() || "";
-  const cidade = edits.cidade.trim();
-  const biografia = edits.biografia.trim();
-  const nomeTrim = edits.nome.trim();
+  if (!fields.telefone.trim()) {
+    return "Informe o telefone.";
+  }
+
+  if (!fields.escolaridade.trim()) {
+    return "Informe a escolaridade.";
+  }
+
+  const dt = fields.dtNascimento.trim();
+  if (!dt) {
+    return "Informe a data de nascimento no formato DD-MM-AAAA.";
+  }
+  if (!isValidBirthDate(dt)) {
+    return "Data de nascimento inválida. Use DD-MM-AAAA.";
+  }
+
+  if (!fields.estadoCivil.trim()) {
+    return "Informe o estado civil.";
+  }
+
+  if (!fields.estado.trim()) {
+    return "Informe o estado (UF).";
+  }
+  if (fields.estado.trim().length !== 2) {
+    return "O estado deve ter 2 letras (ex.: SP).";
+  }
+
+  if (!fields.cidade.trim()) {
+    return "Informe a cidade.";
+  }
+
+  if (!fields.biografia.trim()) {
+    return "Informe a biografia.";
+  }
+
+  return null;
+}
+
+export function buildUsuarioCadastroPut(
+  fields: PerfilEditFields
+): UsuarioDadosCadastroPut | null {
+  const error = validatePerfilEdit(fields);
+  if (error) return null;
 
   const body: UsuarioDadosCadastroPut = {
-    cpf,
-    telefone,
-    escolaridade,
-    dtNascimento,
-    estadoCivil,
-    estado,
-    cidade,
-    biografia,
+    cpf: onlyDigits(fields.cpf),
+    telefone: fields.telefone.trim(),
+    escolaridade: fields.escolaridade.trim(),
+    dtNascimento: fields.dtNascimento.trim(),
+    estadoCivil: fields.estadoCivil.trim(),
+    estado: fields.estado.trim().toUpperCase(),
+    cidade: fields.cidade.trim(),
+    biografia: fields.biografia.trim(),
   };
-  if (nomeTrim.length > 0) {
-    body.nome = nomeTrim;
+
+  const nome = fields.nome.trim();
+  if (nome.length > 0) {
+    body.nome = nome;
   }
+
   return body;
+}
+
+export function getPerfilEditValidationMessage(fields: PerfilEditFields): string | null {
+  return validatePerfilEdit(fields);
 }
 
 export async function putUsuarioDadosCadastro(body: UsuarioDadosCadastroPut) {

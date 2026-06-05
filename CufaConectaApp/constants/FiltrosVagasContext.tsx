@@ -19,8 +19,6 @@ export type FiltrosVagasState = {
   contratos: ContratosFiltro;
   /** km — reservado para quando a API tiver localização */
   distanciaKm: [number, number];
-  horarioFlexivel: boolean;
-  vestimentaLivre: boolean;
 };
 
 const defaultContratos: ContratosFiltro = {
@@ -33,8 +31,6 @@ const defaultContratos: ContratosFiltro = {
 const defaultState: FiltrosVagasState = {
   contratos: { ...defaultContratos },
   distanciaKm: [0, 100],
-  horarioFlexivel: false,
-  vestimentaLivre: true,
 };
 
 function normalizarTipoContrato(raw: string | null | undefined): string {

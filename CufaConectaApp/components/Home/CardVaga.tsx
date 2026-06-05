@@ -8,6 +8,7 @@ import {
   ImageSourcePropType,
 } from "react-native";
 import { useState } from "react";
+import { DeviceEventEmitter } from "react-native";
 
 import { useVagas } from "../../constants/VagasContext";
 
@@ -47,6 +48,11 @@ export default function CardVaga({
     setSubmitting(true);
     try {
       await candidatar(publicacaoId, empresaIdNum);
+      DeviceEventEmitter.emit("cufa:candidatura-criada", {
+        company,
+        role,
+        publicacaoId,
+      });
       Alert.alert("Parabéns!", `Você se candidatou à vaga em ${company}`);
     } catch {
       Alert.alert(

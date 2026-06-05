@@ -14,20 +14,37 @@ import {
   Alert,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
+import { formatApiError } from "../../lib/formatApiError";
 import { absoluteApiUrl } from "../../lib/urls";
 import * as usuariosApi from "../../services/usuariosService";
+import type { PerfilEditFields } from "../../services/usuariosService";
 import type { UsuarioPerfil } from "../../types/api";
 
 type Props = {
   perfil: UsuarioPerfil;
   onPerfilChanged: () => Promise<void>;
+  onRegisterOpenEdit?: (openEdit: () => void) => void;
 };
 
-export default function ProfileHeader({ perfil, onPerfilChanged }: Props) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <View style={styles.fieldBlock}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      {children}
+    </View>
+  );
+}
+
+export default function ProfileHeader({ perfil, onPerfilChanged, onRegisterOpenEdit }: Props) {
   const nome = perfil.nome ?? "";
-  const biografia = perfil.biografia ?? "";
   const cidade = perfil.cidade ?? "";
   const estado = perfil.estado ?? null;
   const fotoUrl = perfil.fotoUrl ?? null;
@@ -35,20 +52,23 @@ export default function ProfileHeader({ perfil, onPerfilChanged }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<PerfilEditFields>(() =>
+    usuariosApi.perfilEditFieldsFromUsuario(perfil)
+  );
 
-  const [draftNome, setDraftNome] = useState(nome);
-  const [draftBio, setDraftBio] = useState(biografia);
-  const [draftCidade, setDraftCidade] = useState(cidade);
-  const [draftEstado, setDraftEstado] = useState(estado ?? "");
+  const patchDraft = useCallback((patch: Partial<PerfilEditFields>) => {
+    setDraft((prev) => ({ ...prev, ...patch }));
+  }, []);
 
   const openEdit = useCallback(() => {
     setMenuOpen(false);
-    setDraftNome(perfil.nome ?? "");
-    setDraftBio(perfil.biografia ?? "");
-    setDraftCidade(perfil.cidade ?? "");
-    setDraftEstado(perfil.estado ?? "");
+    setDraft(usuariosApi.perfilEditFieldsFromUsuario(perfil));
     setEditOpen(true);
   }, [perfil]);
+
+  useEffect(() => {
+    onRegisterOpenEdit?.(openEdit);
+  }, [onRegisterOpenEdit, openEdit]);
 
   const closeEdit = useCallback(() => {
     if (saving) return;
@@ -56,35 +76,36 @@ export default function ProfileHeader({ perfil, onPerfilChanged }: Props) {
   }, [saving]);
 
   const handleSave = useCallback(async () => {
+    const validationError = usuariosApi.getPerfilEditValidationMessage(draft);
+    if (validationError) {
+      Alert.alert("Revise os dados", validationError);
+      return;
+    }
+
+    const body = usuariosApi.buildUsuarioCadastroPut(draft);
+    if (!body) {
+      Alert.alert("Revise os dados", "Não foi possível montar o cadastro. Verifique os campos.");
+      return;
+    }
+
     setSaving(true);
     try {
-      const body = usuariosApi.buildUsuarioCadastroPut(perfil, {
-        nome: draftNome.trim(),
-        biografia: draftBio.trim(),
-        cidade: draftCidade.trim(),
-        estado: draftEstado.trim(),
-      });
-      if (!body) {
-        Alert.alert(
-          "Cadastro incompleto",
-          "Para salvar pelo app, o backend precisa retornar CPF, telefone, escolaridade, data de nascimento e estado civil no seu perfil. Complete o cadastro e tente de novo."
-        );
-        return;
-      }
       await usuariosApi.putUsuarioDadosCadastro(body);
       await onPerfilChanged();
       setEditOpen(false);
-    } catch {
-      Alert.alert("Erro", "Não foi possível salvar o perfil. Tente novamente.");
+    } catch (err) {
+      Alert.alert("Erro", formatApiError(err, { maxLength: 220 }));
     } finally {
       setSaving(false);
     }
-  }, [draftNome, draftBio, draftCidade, draftEstado, perfil, onPerfilChanged]);
+  }, [draft, onPerfilChanged]);
 
   const remoteAvatar = absoluteApiUrl(fotoUrl);
-
   const location =
     cidade && estado ? `${cidade}, ${estado}` : cidade || estado || "";
+  const cadastroIncompleto = Boolean(
+    usuariosApi.getPerfilEditValidationMessage(usuariosApi.perfilEditFieldsFromUsuario(perfil))
+  );
 
   return (
     <View style={styles.container}>
@@ -125,46 +146,106 @@ export default function ProfileHeader({ perfil, onPerfilChanged }: Props) {
           >
             <View style={styles.editCard}>
               <Text style={styles.editTitle}>Editar perfil</Text>
+              <Text style={styles.editHint}>
+                Preencha todos os campos abaixo. O backend exige esses dados para salvar.
+              </Text>
+
               <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                <Text style={styles.fieldLabel}>Nome</Text>
-                <TextInput
-                  style={styles.input}
-                  value={draftNome}
-                  onChangeText={setDraftNome}
-                  placeholder="Nome"
-                  editable={!saving}
-                />
+                <Field label="Nome">
+                  <TextInput
+                    style={styles.input}
+                    value={draft.nome}
+                    onChangeText={(value) => patchDraft({ nome: value })}
+                    placeholder="Nome completo"
+                    editable={!saving}
+                  />
+                </Field>
 
-                <Text style={styles.fieldLabel}>Biografia</Text>
-                <TextInput
-                  style={[styles.input, styles.inputMultiline]}
-                  value={draftBio}
-                  onChangeText={setDraftBio}
-                  placeholder="Sobre você"
-                  multiline
-                  textAlignVertical="top"
-                  editable={!saving}
-                />
+                <Field label="CPF">
+                  <TextInput
+                    style={styles.input}
+                    value={draft.cpf}
+                    onChangeText={(value) => patchDraft({ cpf: value })}
+                    placeholder="000.000.000-00"
+                    keyboardType="number-pad"
+                    editable={!saving}
+                  />
+                </Field>
 
-                <Text style={styles.fieldLabel}>Cidade</Text>
-                <TextInput
-                  style={styles.input}
-                  value={draftCidade}
-                  onChangeText={setDraftCidade}
-                  placeholder="Cidade"
-                  editable={!saving}
-                />
+                <Field label="Telefone">
+                  <TextInput
+                    style={styles.input}
+                    value={draft.telefone}
+                    onChangeText={(value) => patchDraft({ telefone: value })}
+                    placeholder="(11) 99999-9999"
+                    keyboardType="phone-pad"
+                    editable={!saving}
+                  />
+                </Field>
 
-                <Text style={styles.fieldLabel}>Estado (UF)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={draftEstado}
-                  onChangeText={setDraftEstado}
-                  placeholder="Ex.: SP"
-                  autoCapitalize="characters"
-                  maxLength={2}
-                  editable={!saving}
-                />
+                <Field label="Data de nascimento">
+                  <TextInput
+                    style={styles.input}
+                    value={draft.dtNascimento}
+                    onChangeText={(value) => patchDraft({ dtNascimento: value })}
+                    placeholder="DD-MM-AAAA"
+                    editable={!saving}
+                  />
+                </Field>
+
+                <Field label="Estado civil">
+                  <TextInput
+                    style={styles.input}
+                    value={draft.estadoCivil}
+                    onChangeText={(value) => patchDraft({ estadoCivil: value })}
+                    placeholder="Ex.: Solteiro(a)"
+                    editable={!saving}
+                  />
+                </Field>
+
+                <Field label="Escolaridade">
+                  <TextInput
+                    style={styles.input}
+                    value={draft.escolaridade}
+                    onChangeText={(value) => patchDraft({ escolaridade: value })}
+                    placeholder="Ex.: Ensino Médio completo"
+                    editable={!saving}
+                  />
+                </Field>
+
+                <Field label="Cidade">
+                  <TextInput
+                    style={styles.input}
+                    value={draft.cidade}
+                    onChangeText={(value) => patchDraft({ cidade: value })}
+                    placeholder="Cidade"
+                    editable={!saving}
+                  />
+                </Field>
+
+                <Field label="Estado (UF)">
+                  <TextInput
+                    style={styles.input}
+                    value={draft.estado}
+                    onChangeText={(value) => patchDraft({ estado: value.toUpperCase() })}
+                    placeholder="Ex.: SP"
+                    autoCapitalize="characters"
+                    maxLength={2}
+                    editable={!saving}
+                  />
+                </Field>
+
+                <Field label="Biografia">
+                  <TextInput
+                    style={[styles.input, styles.inputMultiline]}
+                    value={draft.biografia}
+                    onChangeText={(value) => patchDraft({ biografia: value })}
+                    placeholder="Conte um pouco sobre você"
+                    multiline
+                    textAlignVertical="top"
+                    editable={!saving}
+                  />
+                </Field>
               </ScrollView>
 
               <View style={styles.editActions}>
@@ -193,8 +274,11 @@ export default function ProfileHeader({ perfil, onPerfilChanged }: Props) {
       )}
 
       <Text style={styles.name}>{nome || "Seu nome"}</Text>
-      <Text style={styles.subtitle}>{biografia || "Adicione uma biografia"}</Text>
       {location ? <Text style={styles.location}>{location}</Text> : null}
+      {perfil.email ? <Text style={styles.email}>{perfil.email}</Text> : null}
+      {cadastroIncompleto ? (
+        <Text style={styles.incompleteHint}>Complete seu cadastro para salvar alterações.</Text>
+      ) : null}
     </View>
   );
 }
@@ -283,16 +367,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#000",
   },
-  subtitle: {
-    fontSize: 14,
-    marginTop: 4,
-    textAlign: "center",
-    paddingHorizontal: 16,
-  },
   location: {
-    fontSize: 12,
+    fontSize: 13,
     marginTop: 6,
-    color: "#444",
+    color: "#333",
+  },
+  email: {
+    fontSize: 12,
+    marginTop: 4,
+    color: "#555",
+  },
+  incompleteHint: {
+    marginTop: 8,
+    fontSize: 11,
+    color: "#333",
+    backgroundColor: "rgba(255,255,255,0.65)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   editModalRoot: {
     flex: 1,
@@ -317,8 +409,17 @@ const styles = StyleSheet.create({
   editTitle: {
     fontSize: 18,
     fontWeight: "700",
-    marginBottom: 12,
+    marginBottom: 6,
     color: "#0B6B2F",
+  },
+  editHint: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 12,
+    lineHeight: 17,
+  },
+  fieldBlock: {
+    marginBottom: 4,
   },
   fieldLabel: {
     fontSize: 12,
@@ -331,7 +432,7 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
     borderRadius: 10,
     padding: 12,
-    marginBottom: 12,
+    marginBottom: 8,
     backgroundColor: "#fafafa",
     fontSize: 15,
   },
