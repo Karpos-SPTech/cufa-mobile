@@ -26,13 +26,6 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
-        options={{
-          href: null,
-        }}
-      />
-
-      <Tabs.Screen
         name="Home"
         options={{
           title: "Início",
@@ -59,6 +52,13 @@ export default function TabLayout() {
             e.preventDefault();
             router.push("/filter" as Href);
           },
+        }}
+      />
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          title: "Dashboard",
+          tabBarIcon: ({ color }) => <Feather name="bar-chart-2" size={24} color={color} />,
         }}
       />
 
