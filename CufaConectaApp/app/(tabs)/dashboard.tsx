@@ -85,24 +85,24 @@ export default function DashboardMarketScreen() {
   const topMetrics = useMemo<Metric[]>(
     () => [
       {
-        label: "Vagas Abertas",
-        value: "14.2K",
-        hint: "no mercado atual",
+        label: "Área mais indicada",
+        value: "Comércio",
+        hint: "43% dos perfis semelhantes ao seu estão nesta área",
       },
       {
-        label: "Média Salarial",
-        value: "R$ 5.2k",
-        hint: "nível pleno",
+        label: "Compatibilidade",
+        value: "82%",
+        hint: "das vagas disponíveis no app são compativeis com seu perfil",
       },
       {
-        label: "Crescimento",
-        value: "+12%",
-        hint: "vs. mês anterior",
+        label: "Faixa Salarial",
+        value: "~ R$ 2.000",
+        hint: "salário médio de trabalhadores com perfil semelhante",
       },
       {
-        label: "Candidato/Vaga",
-        value: "34",
-        hint: "concorrência média",
+        label: "Nivel de Empregabilidade",
+        value: "64%",
+        hint: "dos trabalhadores da região possuem escolaridade semelhante",
       },
     ],
     []
@@ -110,10 +110,10 @@ export default function DashboardMarketScreen() {
 
   // Dados Gráfico: Distribuição por Modelo/Setor (BarChart)
   const barChartData = [
-    { value: 250, label: "CLT", frontColor: "#0B6B2F" },
-    { value: 180, label: "PJ", frontColor: "#66A96F" },
-    { value: 90, label: "Estágio", frontColor: "#A3C7A9" },
-    { value: 50, label: "Free.", frontColor: "#D7E3D9" },
+    { value: 43, label: "Comércio", frontColor: "#0B6B2F" },
+    { value: 29, label: "Serviços", frontColor: "#66A96F" },
+    { value: 18, label: "Logística", frontColor: "#A3C7A9" },
+    { value: 10, label: "Construção", frontColor: "#D7E3D9" }
   ];
 
   return (
@@ -164,18 +164,23 @@ export default function DashboardMarketScreen() {
 
           {/* GRÁFICO - BARRAS */}
           <SectionCard
-            title="Modelos de Contratação"
-            subtitle="Volume absoluto de vagas ativas por formato de contrato."
+            title="Maior potencial para seu perfil"
+            subtitle="Distribuição de oportunidades por setor"
           >
             <View style={styles.chartContainer}>
               <BarChart
                 data={barChartData}
-                width={screenWidth - 80}
-                height={220}
-                barWidth={35}
+                width={screenWidth - 100}
+                height={270}
+                barWidth={51}
+                initialSpacing={10}
+                spacing={22}
                 barBorderRadius={4}
+                maxValue={100}
+                noOfSections={4}
+                yAxisLabelTexts={["0%", "25%", "50%", "75%", "100%"]}
                 yAxisTextStyle={{ color: "#718072", fontSize: 10 }}
-                xAxisLabelTextStyle={{ color: "#718072", fontSize: 11 }}
+                xAxisLabelTextStyle={{ color: "#718072", fontSize: 14 }}
                 hideRules
                 yAxisColor="#D7E3D9"
                 xAxisColor="#D7E3D9"
@@ -304,11 +309,11 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   sectionContent: {
-    marginTop: 20,
+    marginTop: 12,
   },
   chartContainer: {
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: -10,
+    marginLeft: -12
   },
 });

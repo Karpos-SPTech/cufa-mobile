@@ -81,6 +81,7 @@ const styles = StyleSheet.create({
     height: 36,
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 10
   },
   badge: {
     position: "absolute",
@@ -105,6 +106,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: "#D9D9D9",
     overflow: "hidden",
+    marginTop: 10
   },
   profileImage: {
     width: "100%",
