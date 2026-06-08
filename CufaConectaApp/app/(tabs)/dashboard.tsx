@@ -10,12 +10,88 @@ import {
 } from "react-native";
 import { BarChart } from "react-native-gifted-charts";
 import { useFocusEffect } from "@react-navigation/native";
-
+import { useAuth } from "../../constants/AuthContext";
 import Header from "../../components/Base/Header";
-// Importe seus serviços reais aqui depois
-// import { fetchMercadoTrabalho } from "../../services/mercadoService";
 
 const screenWidth = Dimensions.get("window").width;
+
+
+function generateSeed(email: string) {
+  let hash = 0;
+
+  for (let i = 0; i < email.length; i++) {
+    hash = email.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  return Math.abs(hash);
+}
+
+function generateMarketData(email: string) {
+  const seed = generateSeed(email);
+
+  const areas = [
+    "Comércio",
+    "Serviços",
+    "Logística",
+    "Construção",
+  ];
+
+  const compatibilidade = 70 + (seed % 25);
+
+  const salario = 1950 + ((seed % 41) * 10);
+
+  const empregabilidade = 50 + (seed % 35);
+
+  const areaPrincipal =
+  seed % 2 === 0
+    ? "Comércio"
+    : "Serviços";
+
+const primeiro = 42 + (seed % 10); // 42-51
+const segundo = 28 + ((seed * 3) % 8); // 28-35
+const terceiro = 10 + ((seed * 5) % 6); // 10-15
+
+let quarto = 100 - primeiro - segundo - terceiro;
+
+// garante mínimo de 5%
+if (quarto < 5) {
+  quarto = 5;
+}
+
+const total = primeiro + segundo + terceiro + quarto;
+
+// normaliza para 100%
+const p1 = Math.round((primeiro / total) * 100);
+const p2 = Math.round((segundo / total) * 100);
+const p3 = Math.round((terceiro / total) * 100);
+const p4 = 100 - p1 - p2 - p3;
+
+let chartData = [];
+
+if (areaPrincipal === "Comércio") {
+  chartData = [
+    { value: p1, label: "Comércio", frontColor: "#0B6B2F" },
+    { value: p2, label: "Serviços", frontColor: "#66A96F" },
+    { value: p3, label: "Logística", frontColor: "#A3C7A9" },
+    { value: p4, label: "Construção", frontColor: "#D7E3D9" },
+  ];
+} else {
+  chartData = [
+    { value: p1, label: "Serviços", frontColor: "#0B6B2F" },
+    { value: p2, label: "Comércio", frontColor: "#66A96F" },
+    { value: p3, label: "Logística", frontColor: "#A3C7A9" },
+    { value: p4, label: "Construção", frontColor: "#D7E3D9" },
+  ];
+}
+
+  return {
+    areaPrincipal,
+    compatibilidade,
+    salario,
+    empregabilidade,
+    chartData,
+  };
+}
 
 // --- TIPAGENS ---
 type Metric = {
@@ -56,19 +132,25 @@ function SectionCard({
 export default function DashboardMarketScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [marketData, setMarketData] = useState<any>(null);
+  const { perfil } = useAuth();
 
-  // --- MOCKS PARA INTEGRAÇÃO FUTURA ---
   const loadDadosMercado = useCallback(async () => {
-    // Aqui você fará a integração com a base de dados do mercado
     setLoading(true);
+
     try {
-      // Simulação de delay da API
       await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const email = perfil?.email ?? "guest@email.com";
+
+      const data = generateMarketData(email);
+
+      setMarketData(data);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [perfil]);
 
   useFocusEffect(
     useCallback(() => {
@@ -81,40 +163,34 @@ export default function DashboardMarketScreen() {
     loadDadosMercado();
   }
 
-  // Indicadores Numéricos (Métricas do Mercado)
-  const topMetrics = useMemo<Metric[]>(
-    () => [
+  const topMetrics = useMemo<Metric[]>(() => {
+    if (!marketData) return [];
+
+    return [
       {
         label: "Área mais indicada",
-        value: "Comércio",
-        hint: "43% dos perfis semelhantes ao seu estão nesta área",
+        value: marketData.areaPrincipal,
+        hint: `${marketData.chartData[0].value}% dos perfis semelhantes ao seu estão nesta área`,
       },
       {
         label: "Compatibilidade",
-        value: "82%",
-        hint: "das vagas disponíveis no app são compativeis com seu perfil",
+        value: `${marketData.compatibilidade}%`,
+        hint: "das vagas disponíveis no app são compatíveis com seu perfil",
       },
       {
         label: "Faixa Salarial",
-        value: "~ R$ 2.000",
+        value: `~ R$ ${marketData.salario.toLocaleString("pt-BR")}`,
         hint: "salário médio de trabalhadores com perfil semelhante",
       },
       {
-        label: "Nivel de Empregabilidade",
-        value: "64%",
+        label: "Nível de Empregabilidade",
+        value: `${marketData.empregabilidade}%`,
         hint: "dos trabalhadores da região possuem escolaridade semelhante",
       },
-    ],
-    []
-  );
+    ];
+  }, [marketData]);
 
-  // Dados Gráfico: Distribuição por Modelo/Setor (BarChart)
-  const barChartData = [
-    { value: 43, label: "Comércio", frontColor: "#0B6B2F" },
-    { value: 29, label: "Serviços", frontColor: "#66A96F" },
-    { value: 18, label: "Logística", frontColor: "#A3C7A9" },
-    { value: 10, label: "Construção", frontColor: "#D7E3D9" }
-  ];
+  const barChartData = marketData?.chartData ?? [];
 
   return (
     <View style={styles.screen}>

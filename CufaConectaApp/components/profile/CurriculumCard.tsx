@@ -119,7 +119,6 @@ export default function CurriculumCard({ filename, curriculoUrl, loading, onChan
         <TouchableOpacity
           style={styles.secondary}
           onPress={handleDelete}
-          disabled={!resolvedName}
         >
           <Text style={[styles.textGreen, !resolvedName && styles.textDisabled]}>Excluir</Text>
         </TouchableOpacity>

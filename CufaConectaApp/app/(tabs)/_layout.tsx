@@ -1,8 +1,25 @@
-import { Tabs, useRouter, type Href } from "expo-router";
+import { Tabs, useRouter, useSegments, type Href } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
+import { useEffect, useState, useRef } from "react";
 
 export default function TabLayout() {
   const router = useRouter();
+  const segments = useSegments();
+
+  const lastTabRef = useRef("Home");
+
+  const currentRoute = segments[segments.length - 1];
+
+  if (
+    currentRoute === "Home" ||
+    currentRoute === "jobs" ||
+    currentRoute === "dashboard" ||
+    currentRoute === "profile"
+  ) {
+    lastTabRef.current = currentRoute;
+  }
+
+  const showFilterTab = lastTabRef.current === "Home";
 
   return (
     <Tabs
@@ -34,18 +51,15 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="jobs"
-        options={{
-          title: "Candidaturas",
-          tabBarIcon: ({ color }) => <Feather name="briefcase" size={24} color={color} />,
-        }}
-      />
-
-      <Tabs.Screen
         name="filter-tab"
         options={{
           title: "Filtros",
-          tabBarIcon: ({ color }) => <Ionicons name="filter" size={24} color={color} />,
+          tabBarItemStyle: {
+            display: showFilterTab ? "flex" : "none",
+          },
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="filter" size={24} color={color} />
+          ),
         }}
         listeners={{
           tabPress: (e) => {
@@ -54,6 +68,15 @@ export default function TabLayout() {
           },
         }}
       />
+
+      <Tabs.Screen
+        name="jobs"
+        options={{
+          title: "Candidaturas",
+          tabBarIcon: ({ color }) => <Feather name="briefcase" size={24} color={color} />,
+        }}
+      />
+
       <Tabs.Screen
         name="dashboard"
         options={{

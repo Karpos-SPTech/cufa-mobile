@@ -20,25 +20,36 @@ export default function FilterModal() {
   const router = useRouter();
   const { filtros, setFiltros, setContratos, resetFiltros } = useFiltrosVagas();
 
-  const [distance, setDistance] = useState<number[]>([...filtros.distanciaKm]);
-  const [contracts, setContracts] = useState<ContratosFiltro>({ ...filtros.contratos });
+  // Agora é apenas um valor (distância máxima)
+  const [distance, setDistance] = useState<number>(
+    filtros.distanciaKm[1] ?? 20
+  );
+
+  const [contracts, setContracts] = useState<ContratosFiltro>({
+    ...filtros.contratos,
+  });
 
   useFocusEffect(
     useCallback(() => {
-      setDistance([...filtros.distanciaKm]);
+      setDistance(filtros.distanciaKm[1] ?? 20);
       setContracts({ ...filtros.contratos });
     }, [filtros])
   );
 
   const toggleContract = (type: keyof ContratosFiltro) => {
-    setContracts((prev) => ({ ...prev, [type]: !prev[type] }));
+    setContracts((prev) => ({
+      ...prev,
+      [type]: !prev[type],
+    }));
   };
 
   function aplicar() {
     setContratos(contracts);
+
     setFiltros({
-      distanciaKm: [distance[0] ?? 0, distance[1] ?? 100],
+      distanciaKm: [0, distance],
     });
+
     router.back();
   }
 
@@ -50,61 +61,90 @@ export default function FilterModal() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Pressable style={styles.overlay} onPress={() => router.back()}>
-        <Pressable style={styles.filterCard} onPress={(e) => e.stopPropagation()}>
-          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <Pressable
+          style={styles.filterCard}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.handle} />
+
             <Text style={styles.title}>Filtros</Text>
+
             <Text style={styles.hint}>
-              Tipo de contrato filtra a lista na tela inicial. A distância ficará ativa quando a API
-              tiver esse dado.
+              Tipo de contrato filtra a lista na tela inicial. A distância
+              ficará ativa quando a API tiver esse dado.
             </Text>
 
             <View style={styles.row}>
-              {(Object.keys(contracts) as (keyof ContratosFiltro)[]).map((key) => (
-                <TouchableOpacity
-                  key={key}
-                  style={styles.checkboxContainer}
-                  activeOpacity={0.8}
-                  onPress={() => toggleContract(key)}
-                >
-                  <Text style={styles.label}>{key}</Text>
-                  <Ionicons
-                    name={contracts[key] ? "checkbox" : "square-outline"}
-                    size={22}
-                    color="#006916"
-                  />
-                </TouchableOpacity>
-              ))}
+              {(Object.keys(contracts) as (keyof ContratosFiltro)[]).map(
+                (key) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={styles.checkboxContainer}
+                    activeOpacity={0.8}
+                    onPress={() => toggleContract(key)}
+                  >
+                    <Text style={styles.label}>{key}</Text>
+
+                    <Ionicons
+                      name={contracts[key] ? "checkbox" : "square-outline"}
+                      size={22}
+                      color="#006916"
+                    />
+                  </TouchableOpacity>
+                )
+              )}
             </View>
 
             <View style={styles.sliderSection}>
               <View style={styles.sliderLabels}>
-                <Text style={styles.label}>Distância</Text>
+                <Text style={styles.label}>Distância máxima</Text>
+
                 <Text style={styles.distanceValue}>
-                  {Math.round(distance[0] ?? 0)}–{Math.round(distance[1] ?? 100)} km
+                  Até {Math.round(distance)} km
                 </Text>
               </View>
 
               <Slider
                 value={distance}
-                onValueChange={(value) => setDistance(value as number[])}
-                maximumValue={100}
+                onValueChange={(value) =>
+                  setDistance(Array.isArray(value) ? value[0] : value)
+                }
                 minimumValue={0}
+                maximumValue={100}
                 step={1}
                 thumbTintColor="#006916"
                 minimumTrackTintColor="#006916"
                 maximumTrackTintColor="#d0d8d0"
-                trackStyle={{ height: 6, borderRadius: 999 }}
-                thumbStyle={{ width: 18, height: 18 }}
+                trackStyle={{
+                  height: 6,
+                  borderRadius: 999,
+                }}
+                thumbStyle={{
+                  width: 18,
+                  height: 18,
+                }}
               />
             </View>
           </ScrollView>
 
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.btnSecondary} onPress={limpar} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={styles.btnSecondary}
+              onPress={limpar}
+              activeOpacity={0.85}
+            >
               <Text style={styles.btnSecondaryText}>Limpar</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.btnPrimary} onPress={aplicar} activeOpacity={0.85}>
+
+            <TouchableOpacity
+              style={styles.btnPrimary}
+              onPress={aplicar}
+              activeOpacity={0.85}
+            >
               <Text style={styles.btnPrimaryText}>Aplicar</Text>
             </TouchableOpacity>
           </View>
@@ -119,11 +159,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "transparent",
   },
+
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "flex-end",
   },
+
   filterCard: {
     backgroundColor: "#FFF",
     borderTopLeftRadius: 28,
@@ -138,6 +180,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: -6 },
   },
+
   handle: {
     width: 48,
     height: 5,
@@ -146,6 +189,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginBottom: 10,
   },
+
   title: {
     fontSize: 26,
     fontWeight: "800",
@@ -153,6 +197,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 8,
   },
+
   hint: {
     fontSize: 12,
     color: "#555",
@@ -160,11 +205,13 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     lineHeight: 17,
   },
+
   row: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
   },
+
   checkboxContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -172,26 +219,31 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     justifyContent: "space-between",
   },
+
   label: {
     fontSize: 13,
     fontWeight: "700",
     color: "#111",
   },
+
   sliderSection: {
     marginTop: 8,
     marginBottom: 16,
   },
+
   sliderLabels: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 4,
   },
+
   distanceValue: {
     fontSize: 12,
     fontWeight: "700",
     color: "#111",
   },
+
   actions: {
     flexDirection: "row",
     gap: 12,
@@ -200,6 +252,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#e8eee8",
   },
+
   btnSecondary: {
     flex: 1,
     paddingVertical: 14,
@@ -207,11 +260,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#E5EEE3",
     alignItems: "center",
   },
+
   btnSecondaryText: {
     fontWeight: "700",
     color: "#333",
     fontSize: 15,
   },
+
   btnPrimary: {
     flex: 1,
     paddingVertical: 14,
@@ -219,6 +274,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#006916",
     alignItems: "center",
   },
+
   btnPrimaryText: {
     fontWeight: "800",
     color: "#fff",
