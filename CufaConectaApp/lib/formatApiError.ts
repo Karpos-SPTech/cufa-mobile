@@ -38,6 +38,21 @@ export function formatApiError(e: unknown, options?: { maxLength?: number }): st
 
   if (isAxiosError(e)) {
     const ax = e as AxiosError<unknown>;
+
+    // Sem resposta = o servidor não foi alcançado (host errado, fora da rede, firewall, timeout).
+    if (ax.response == null) {
+      const url = ax.config?.baseURL
+        ? `${ax.config.baseURL}${ax.config?.url ?? ""}`
+        : ax.config?.url;
+      const isTimeout = ax.code === "ECONNABORTED";
+      const base = isTimeout
+        ? "Tempo de conexão esgotado"
+        : "Sem conexão com o servidor";
+      out = url ? `${base} (${url})` : base;
+      out = out.replace(/\s+/g, " ").trim();
+      return out.length > max ? `${out.slice(0, max - 1)}…` : out;
+    }
+
     const fromBody = stringifyBody(ax.response?.data);
     out = fromBody || ax.message || "Falha na requisição.";
     const st = ax.response?.status;

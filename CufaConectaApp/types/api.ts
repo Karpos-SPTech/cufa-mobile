@@ -91,6 +91,8 @@ export interface AnaliseCurriculo {
   sugestoes: string[];
 }
 
+/** O backend serializa o campo como `resultado`; mantemos `analise` como alias por compatibilidade. */
 export interface AnaliseCurriculoResponse {
-  analise: AnaliseCurriculo;
+  resultado?: AnaliseCurriculo;
+  analise?: AnaliseCurriculo;
 }
