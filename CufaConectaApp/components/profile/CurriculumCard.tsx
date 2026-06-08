@@ -14,6 +14,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as curriculosApi from "../../services/curriculosService";
 import type { AnaliseCurriculo } from "../../types/api";
 import { formatApiError } from "../../lib/formatApiError";
+import ConfirmDialog from "../Base/ConfirmDialog";
 
 type Props = {
   filename: string | null;
@@ -32,6 +33,7 @@ export default function CurriculumCard({ filename, curriculoUrl, loading, onChan
   const [analyzing, setAnalyzing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [analise, setAnalise] = useState<AnaliseCurriculo | null>(null);
+  const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
 
   async function handleAttach() {
     try {
@@ -80,23 +82,23 @@ export default function CurriculumCard({ filename, curriculoUrl, loading, onChan
     }
   }
 
-  async function handleDelete() {
-    Alert.alert("Excluir currículo", "Confirma a exclusão?", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Excluir",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await curriculosApi.removerCurriculo();
-            Alert.alert("Removido", "Currículo excluído.");
-            onChanged();
-          } catch (err) {
-            Alert.alert("Erro", formatApiError(err, { maxLength: 220 }));
-          }
-        },
-      },
-    ]);
+  function handleDelete() {
+    if (!resolvedName) {
+      Alert.alert("Currículo", "Nenhum arquivo anexado para excluir.");
+      return;
+    }
+    setConfirmDeleteVisible(true);
+  }
+
+  async function confirmDelete() {
+    setConfirmDeleteVisible(false);
+    try {
+      await curriculosApi.removerCurriculo();
+      Alert.alert("Removido", "Currículo excluído.");
+      onChanged();
+    } catch (err) {
+      Alert.alert("Erro", formatApiError(err, { maxLength: 220 }));
+    }
   }
 
   const resolvedName =
@@ -188,6 +190,16 @@ export default function CurriculumCard({ filename, curriculoUrl, loading, onChan
           </Pressable>
         </Pressable>
       </Modal>
+
+      <ConfirmDialog
+        visible={confirmDeleteVisible}
+        title="Excluir currículo"
+        message="Confirma a exclusão do currículo anexado?"
+        confirmLabel="Excluir"
+        destructive
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmDeleteVisible(false)}
+      />
     </View>
   );
 }

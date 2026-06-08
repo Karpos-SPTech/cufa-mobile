@@ -16,6 +16,12 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
+import FormSelect from "../../components/Base/FormSelect";
+import {
+  ESCOLARIDADE_OPCOES,
+  ESTADO_CIVIL_OPCOES,
+  UF_OPCOES,
+} from "../../constants/perfilOptions";
 import { formatApiError } from "../../lib/formatApiError";
 import { absoluteApiUrl } from "../../lib/urls";
 import * as usuariosApi from "../../services/usuariosService";
@@ -138,16 +144,15 @@ export default function ProfileHeader({ perfil, onPerfilChanged, onRegisterOpenE
       </Modal>
 
       <Modal visible={editOpen} transparent animationType="fade" onRequestClose={closeEdit}>
-        <View style={styles.editModalRoot}>
-          <Pressable style={styles.editBackdrop} onPress={closeEdit} />
+        <Pressable style={styles.editModalRoot} onPress={closeEdit}>
           <KeyboardAvoidingView
             style={styles.editKeyboard}
             behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
-            <View style={styles.editCard}>
+            <Pressable style={styles.editCard} onPress={(e) => e.stopPropagation()}>
               <Text style={styles.editTitle}>Editar perfil</Text>
               <Text style={styles.editHint}>
-                Preencha todos os campos abaixo. O backend exige esses dados para salvar.
+                Preencha todos os campos. A data deve estar no formato DD-MM-AAAA.
               </Text>
 
               <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -193,25 +198,21 @@ export default function ProfileHeader({ perfil, onPerfilChanged, onRegisterOpenE
                   />
                 </Field>
 
-                <Field label="Estado civil">
-                  <TextInput
-                    style={styles.input}
-                    value={draft.estadoCivil}
-                    onChangeText={(value) => patchDraft({ estadoCivil: value })}
-                    placeholder="Ex.: Solteiro(a)"
-                    editable={!saving}
-                  />
-                </Field>
+                <FormSelect
+                  label="Estado civil"
+                  value={draft.estadoCivil}
+                  options={ESTADO_CIVIL_OPCOES}
+                  onChange={(value) => patchDraft({ estadoCivil: value })}
+                  disabled={saving}
+                />
 
-                <Field label="Escolaridade">
-                  <TextInput
-                    style={styles.input}
-                    value={draft.escolaridade}
-                    onChangeText={(value) => patchDraft({ escolaridade: value })}
-                    placeholder="Ex.: Ensino Médio completo"
-                    editable={!saving}
-                  />
-                </Field>
+                <FormSelect
+                  label="Escolaridade"
+                  value={draft.escolaridade}
+                  options={ESCOLARIDADE_OPCOES}
+                  onChange={(value) => patchDraft({ escolaridade: value })}
+                  disabled={saving}
+                />
 
                 <Field label="Cidade">
                   <TextInput
@@ -223,17 +224,13 @@ export default function ProfileHeader({ perfil, onPerfilChanged, onRegisterOpenE
                   />
                 </Field>
 
-                <Field label="Estado (UF)">
-                  <TextInput
-                    style={styles.input}
-                    value={draft.estado}
-                    onChangeText={(value) => patchDraft({ estado: value.toUpperCase() })}
-                    placeholder="Ex.: SP"
-                    autoCapitalize="characters"
-                    maxLength={2}
-                    editable={!saving}
-                  />
-                </Field>
+                <FormSelect
+                  label="Estado (UF)"
+                  value={draft.estado}
+                  options={UF_OPCOES}
+                  onChange={(value) => patchDraft({ estado: value })}
+                  disabled={saving}
+                />
 
                 <Field label="Biografia">
                   <TextInput
@@ -260,9 +257,9 @@ export default function ProfileHeader({ perfil, onPerfilChanged, onRegisterOpenE
                   )}
                 </TouchableOpacity>
               </View>
-            </View>
+            </Pressable>
           </KeyboardAvoidingView>
-        </View>
+        </Pressable>
       </Modal>
 
       {remoteAvatar ? (
@@ -389,9 +386,6 @@ const styles = StyleSheet.create({
   editModalRoot: {
     flex: 1,
     justifyContent: "center",
-  },
-  editBackdrop: {
-    ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0, 0, 0, 0.45)",
   },
   editKeyboard: {

@@ -12,7 +12,32 @@ import { DeviceEventEmitter } from "react-native";
 
 import { useVagas } from "../../constants/VagasContext";
 
-const PLACEHOLDER_LOGO = require("../../assets/images/mcdonalds.png");
+/** Paleta para o avatar gerado a partir do nome da empresa (sem logo real). */
+const AVATAR_COLORS = [
+  "#0B6B2F",
+  "#1E6FB8",
+  "#B8541E",
+  "#7A1FB8",
+  "#1FB89E",
+  "#B81F5B",
+  "#5B7A1F",
+  "#1F3DB8",
+];
+
+function getCompanyInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "?";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
+
+function getColorForName(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
 
 export type CardVagaProps = {
   company: string;
@@ -64,12 +89,19 @@ export default function CardVaga({
     }
   };
 
-  const logoSource = image ?? PLACEHOLDER_LOGO;
+  const initials = getCompanyInitials(company);
+  const avatarColor = getColorForName(company || "Empresa");
 
   return (
     <View style={styles.card}>
       <View style={styles.headerCard}>
-        <Image source={logoSource} style={styles.logo} resizeMode="cover" />
+        {image ? (
+          <Image source={image} style={styles.logo} resizeMode="cover" />
+        ) : (
+          <View style={[styles.logo, styles.avatar, { backgroundColor: avatarColor }]}>
+            <Text style={styles.avatarText}>{initials}</Text>
+          </View>
+        )}
 
         <View style={styles.infoContainer}>
           <Text style={styles.company}>{company}</Text>
@@ -122,6 +154,15 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 8,
     marginRight: 12,
+  },
+  avatar: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: {
+    color: "#FFF",
+    fontWeight: "700",
+    fontSize: 22,
   },
   infoContainer: {
     flex: 1,

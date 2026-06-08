@@ -20,9 +20,11 @@ import SectionTitle from "../../components/Base/SectionTitle";
 import ProfileHeader from "../../components/profile/ProfileHeader";
 import ExperienceCard from "../../components/profile/ExperienceCard";
 import CurriculumCard from "../../components/profile/CurriculumCard";
+import ConfirmDialog from "../../components/Base/ConfirmDialog";
 import * as experienciasApi from "../../services/experienciasService";
 import * as curriculosApi from "../../services/curriculosService";
 import { getUsuarioAtual } from "../../services/usuariosService";
+import { formatApiError } from "../../lib/formatApiError";
 import {
   defaultExperienciaRange,
   formatExperienciaPeriod,
@@ -57,6 +59,7 @@ export default function Profile() {
   const [cvLoading, setCvLoading] = useState(true);
 
   const [experienceModalOpen, setExperienceModalOpen] = useState(false);
+  const [experienceToDelete, setExperienceToDelete] = useState<ExperienciaApi | null>(null);
   const [expTitle, setExpTitle] = useState("");
   const [expCompany, setExpCompany] = useState("");
   const [expCity, setExpCity] = useState("");
@@ -152,8 +155,8 @@ export default function Profile() {
       await loadExperiencias();
       resetExperienceForm();
       setExperienceModalOpen(false);
-    } catch {
-      Alert.alert("Erro", "Não foi possível salvar a experiência.");
+    } catch (err) {
+      Alert.alert("Erro", formatApiError(err, { maxLength: 220 }));
     }
   };
 
@@ -181,22 +184,20 @@ export default function Profile() {
   };
 
   const handleDeleteExperience = (item: ExperienciaApi) => {
-    Alert.alert("Excluir experiência", "Remover este registro?", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Excluir",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await experienciasApi.removerExperiencia(item.id);
-            await loadExperiencias();
-            handleCloseExperienceModal();
-          } catch {
-            Alert.alert("Erro", "Não foi possível excluir.");
-          }
-        },
-      },
-    ]);
+    setExperienceToDelete(item);
+  };
+
+  const confirmDeleteExperience = async () => {
+    const item = experienceToDelete;
+    if (!item) return;
+    setExperienceToDelete(null);
+    try {
+      await experienciasApi.removerExperiencia(item.id);
+      await loadExperiencias();
+      handleCloseExperienceModal();
+    } catch (err) {
+      Alert.alert("Erro", formatApiError(err, { maxLength: 220 }));
+    }
   };
 
   const perfil = usuarioPerfil ?? perfilAuth;
@@ -382,6 +383,16 @@ export default function Profile() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <ConfirmDialog
+        visible={experienceToDelete != null}
+        title="Excluir experiência"
+        message="Remover este registro?"
+        confirmLabel="Excluir"
+        destructive
+        onConfirm={confirmDeleteExperience}
+        onCancel={() => setExperienceToDelete(null)}
+      />
     </View>
   );
 }
