@@ -28,6 +28,22 @@ import * as usuariosApi from "../../services/usuariosService";
 import type { PerfilEditFields } from "../../services/usuariosService";
 import type { UsuarioPerfil } from "../../types/api";
 
+// Funções de formatação
+const formatarCPF = (value: string): string => {
+  const cleaned = value.replace(/\D/g, "");
+  return cleaned.slice(0, 11).replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+};
+
+const formatarTelefone = (value: string): string => {
+  const cleaned = value.replace(/\D/g, "");
+  return cleaned.slice(0, 11).replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+};
+
+const formatarData = (value: string): string => {
+  const cleaned = value.replace(/\D/g, "");
+  return cleaned.slice(0, 8).replace(/(\d{2})(\d{2})(\d{4})/, "$1-$2-$3");
+};
+
 type Props = {
   perfil: UsuarioPerfil;
   onPerfilChanged: () => Promise<void>;
@@ -170,7 +186,7 @@ export default function ProfileHeader({ perfil, onPerfilChanged, onRegisterOpenE
                   <TextInput
                     style={styles.input}
                     value={draft.cpf}
-                    onChangeText={(value) => patchDraft({ cpf: value })}
+                    onChangeText={(value) => patchDraft({ cpf: formatarCPF(value) })}
                     placeholder="000.000.000-00"
                     keyboardType="number-pad"
                     editable={!saving}
@@ -181,7 +197,7 @@ export default function ProfileHeader({ perfil, onPerfilChanged, onRegisterOpenE
                   <TextInput
                     style={styles.input}
                     value={draft.telefone}
-                    onChangeText={(value) => patchDraft({ telefone: value })}
+                    onChangeText={(value) => patchDraft({ telefone: formatarTelefone(value) })}
                     placeholder="(11) 99999-9999"
                     keyboardType="phone-pad"
                     editable={!saving}
@@ -192,8 +208,9 @@ export default function ProfileHeader({ perfil, onPerfilChanged, onRegisterOpenE
                   <TextInput
                     style={styles.input}
                     value={draft.dtNascimento}
-                    onChangeText={(value) => patchDraft({ dtNascimento: value })}
+                    onChangeText={(value) => patchDraft({ dtNascimento: formatarData(value) })}
                     placeholder="DD-MM-AAAA"
+                    keyboardType="number-pad"
                     editable={!saving}
                   />
                 </Field>
